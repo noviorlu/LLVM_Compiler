@@ -1,0 +1,9 @@
+# ANTLR 4
+export ANTLR_VER="4.7.2"
+export ANTLR_HOME="/cad2/ece467f/ANTLR-$ANTLR_VER"
+export ANTLR_JAR="$ANTLR_HOME/antlr-$ANTLR_VER-complete.jar"
+export CLASSPATH=".:$ANTLR_JAR:$CLASSPATH"
+alias antlr4="java -jar $ANTLR_JAR"
+alias grun="java org.antlr.v4.gui.TestRig"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$ANTLR_HOME/lib
+

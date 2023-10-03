@@ -44,63 +44,101 @@ arrDeclList:
     arrDecl arrDeclList
 ;
 
-arrDecl: // ECE467 student: add rule
+arrDecl: varType arrName '[' intConst ']' ';';
 
-fcnProto: // ECE467 student: add rule
+fcnProto: retType fcnName '(' params ')' ';';
 
-fcnDecl: // ECE467 student: add rule
+fcnDecl: retType fcnName '(' params ')' scope;
 
-varType: // ECE467 student: add rule
+varType: 'bool' | 'int';
 
-retType: // ECE467 student: add rule
+retType: 'void' | varType;
 
-constant: // ECE467 student: add rule
+constant: boolConst | intConst;
 
-boolConst: // ECE467 student: add rule
+boolConst: '1' | '0';
 
-scope: // ECE467 student: add rule
+scope: '{' (scalarDecl | arrDecl)* (stmt)* '}';
 
-stmt: // ECE467 student: add rule
+stmt:
+    expr ';' 
+    | assignStmt 
+    | ifStmt 
+    | whileStmt 
+    | retStmt 
+    | scope
+;
 
-assignStmt: // ECE467 student: add rule
+assignStmt: var '=' expr ';';
 
-ifStmt: // ECE467 student: add rule
+ifStmt: 
+    'if' '(' expr ')' stmt
+    | 'if' '(' expr ')' stmt 'else' stmt
+;
 
-whileStmt: // ECE467 student: add rule
+whileStmt:  'while' '(' expr ')' stmt;
 
-retStmt: // ECE467 student: add rule
+retStmt:  'return' ';' | 'return' expr ';';
 
-expr: // ECE467 student: add rule
+expr:  
+    intExpr
+    | '(' expr ')'
+    | fcnName '(' args ')' 
+    | '!' expr
+    | '-' expr
+    | expr '<' expr
+    | expr '<=' expr
+    | expr '>' expr
+    | expr '>=' expr
+    | expr '==' expr
+    | expr '!=' expr
+    | expr '||' expr
+    | expr '&&' expr
+;
 
-intExpr: // ECE467 student: add rule
+intExpr: 
+    constant
+    | var
+    | intExpr '+' intExpr
+    | intExpr '-' intExpr
+    | intExpr '*' intExpr
+    | intExpr '/' intExpr
+    | '(' intExpr ')'
+;
 
-var: // ECE467 student: add rule
+var: varName | arrName '[' intExpr ']';
 
-params: // ECE467 student: add rule
+params: (paramList | );
 
-paramEntry: // ECE467 student: add rule
+paramEntry:
+    varType varName
+    | varType arrName '[]'
+;
 
-paramList: // ECE467 student: add rule
+paramList: 
+    paramEntry
+    | paramEntry ',' paramList
+;
 
-args: // ECE467 student: add rule
+args: (argList | );
 
-argEntry: // ECE467 student: add rule
+argEntry: expr;
 
-argList: // ECE467 student: add rule
+argList: argEntry | argEntry ',' argList;
 
-varName: // ECE467 student: add rule
+varName: ID;
 
-arrName: // ECE467 student: add rule
+arrName: ID;
 
-fcnName: // ECE467 student: add rule
+fcnName: ID;
 
-intConst: // ECE467 student: add rule
+intConst: INT;
 
 // ECE467 student: complete these tokens definitions and use 
 // them in the rules 
-ID: 
+ID: [a-zA-Z]([a-zA-Z0-9_])*;
 BOOL: '0' | '1';
-INT:    
-WS:   
+INT: ('0' | ['-'])([0-9])*;
+WS: [ \n\t\r]+ -> skip;
 COMMENT: '//' (~[\r\n])* -> skip;
 

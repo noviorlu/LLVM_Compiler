@@ -118,7 +118,10 @@ public:
     void setType(TypeEnum type_) override;
     TypeEnum getTypeEnum() const override;
     bool operator == (const PrimitiveTypeNode& t);
-    bool operator != (const PrimitiveTypExpression
+    bool operator != (const PrimitiveTypeNode& t);
+    void visit(ASTVisitorBase* visitor) override;
+};
+
 /**********************************************************************************/
 /* The ArrayTypeNode Class                                                        */
 /**********************************************************************************/

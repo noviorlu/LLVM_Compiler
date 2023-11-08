@@ -13,7 +13,6 @@
 #include "ASTNodes.h"
 
 #include <iostream>
-#include <cassert>
 
 using namespace smallc;
 
@@ -147,49 +146,11 @@ ProgramNode::visit (ASTVisitorBase* visitor) {
 
 // ECE467 STUDENT: implement the class
 
-bool
-TypeNode::isArray(){
-    return false;
-}
-
 /**********************************************************************************/
 /* The PrimitiveTypeNode Class                                                    */
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-
-PrimitiveTypeNode::PrimitiveTypeNode() : TypeNode(){
-    this->type = Void;
-}
-
-PrimitiveTypeNode::PrimitiveTypeNode(TypeEnum type_) : TypeNode(){
-    this->type = type_;
-}
-
-void
-PrimitiveTypeNode::setType(enum TypeEnum type_){
-    type = type_;
-}
-
-TypeEnum
-PrimitiveTypeNode::getTypeEnum() const {
-    return type;
-}
-
-bool
-PrimitiveTypeNode::operator== (const PrimitiveTypeNode& t) const {
-    return type == t.type;
-}
-
-bool
-PrimitiveTypeNode::operator!= (const PrimitiveTypeNode& t) const {
-    return type != t.type;
-}
-
-void
-PrimitiveTypeNode::visit (ASTVisitorBase* visitor) {
-    visitor->visitPrimitiveTypeNode(this);
-}
 
 /**********************************************************************************/
 /* The ArrayTypeNode Class                                                        */
@@ -197,88 +158,13 @@ PrimitiveTypeNode::visit (ASTVisitorBase* visitor) {
 
 // ECE467 STUDENT: implement the class
 
-ArrayTypeNode::ArrayTypeNode() : TypeNode(){
-    this->type = new PrimitiveTypeNode();
-    this->size = 0;
-}
-
-ArrayTypeNode::ArrayTypeNode(PrimitiveTypeNode* type_) : TypeNode(){
-    this->type = type_;
-    this->size = 0;
-}
-
-ArrayTypeNode::ArrayTypeNode(PrimitiveTypeNode* type_, int size_) : TypeNode(){
-    this->type = type_;
-    this->size = size_;
-}
-
-void
-ArrayTypeNode::setType(enum TypeEnum type_){
-    type->setType(type_);
-}
-
-TypeEnum
-ArrayTypeNode::getTypeEnum() const {
-    return type->getTypeEnum();
-}
-
-void
-ArrayTypeNode::setSize(int size_){
-    size = size_;
-}
-
-int
-ArrayTypeNode::getSize(){
-    return size;
-}
-
-bool
-ArrayTypeNode::operator== (const ArrayTypeNode& t) const {
-    if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
-        return true;
-    return false;
-}
-
-bool
-ArrayTypeNode::operator!= (const ArrayTypeNode& t) const {
-    if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
-        return false;
-    return true;
-}
-
-bool
-ArrayTypeNode::isArray(){
-    return true;
-}
-
-void
-ArrayTypeNode::visit (ASTVisitorBase* visitor) {
-    visitor->visitArrayTypeNode(this);
-}
-
+    
 /**********************************************************************************/
 /* The IdentifierNode Class                                                       */
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
 
-IdentifierNode::IdentifierNode() : ASTNode(){
-    name = "";
-}
-
-IdentifierNode::IdentifierNode(const std::string &text) : ASTNode(){
-    name = text;
-}
-
-const std::string&
-IdentifierNode::getName(){
-    return name;
-}
-
-void
-IdentifierNode::visit (ASTVisitorBase* visitor) {
-    visitor->visitIdentifierNode(this);
-}
 
 /**********************************************************************************/
 /* The ParameterNode Class                                                        */
@@ -286,81 +172,12 @@ IdentifierNode::visit (ASTVisitorBase* visitor) {
 
 // ECE467 STUDENT: implement the class
 
-ParameterNode::ParameterNode(){
-    this->type = new TypeNode();
-    this->name = new IdentifierNode();
-}
-
-ParameterNode::ParameterNode(TypeNode *type_, IdentifierNode *name_){
-    this->type = type_;
-    this->name = name_;
-}
-
-void
-ParameterNode::setType(TypeNode *type_){
-    // if(type != nullptr) delete type;
-    type = type_;
-}
-
-TypeNode*& 
-ParameterNode::getType(){
-    assert(type!=nullptr);
-    return type;
-}
-
-void 
-ParameterNode::setIdent(IdentifierNode *&name_){
-    // if(name != nullptr) delete name;
-    name = name_;
-}
-
-IdentifierNode*& ParameterNode::getIdent(){
-    assert(name!=nullptr);
-    return name;
-}
-
-void 
-ParameterNode::visit(ASTVisitorBase* visitor){
-    visitor->visitParameterNode(this);
-}
-
 /**********************************************************************************/
 /* The Expression Class                                                           */
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-ExprNode::ExprNode(){
-    this.type = new PrimitiveTypeNode();
-}
 
-void 
-ExprNode::setType(PrimitiveTypeNode* type_){
-    // if(type!=nullptr) delete type;
-    this.type = type_;
-}
-void 
-ExprNode::setTypeInt(){
-    assert(type!=nullptr);
-    this.type->setType(Int);
-}
-
-void 
-ExprNode::setTypeBool(){
-    assert(type!=nullptr);
-    this.type->setType(Bool);
-}
-
-void 
-ExprNode::setTypeVoid(){
-    assert(type!=nullptr);
-    this.type->setType(Void);
-}
-
-PrimitiveTypeNode* 
-ExprNode::getType(){
-    assert(type!=nullptr);
-    return type;
-}
 /**********************************************************************************/
 /* The Unary Expression Class                                                     */
 /**********************************************************************************/

@@ -171,18 +171,18 @@ PrimitiveTypeNode::setType(enum TypeEnum type_){
     type = type_;
 }
 
-TypeEnum
+TypeNode::TypeEnum
 PrimitiveTypeNode::getTypeEnum() const {
     return type;
 }
 
 bool
-PrimitiveTypeNode::operator==(const PrimitiveTypeNode& t) const {
+PrimitiveTypeNode::operator == (const PrimitiveTypeNode& t) {
     return type == t.type;
 }
 
 bool
-PrimitiveTypeNode::operator!=(const PrimitiveTypeNode& t) const {
+PrimitiveTypeNode::operator != (const PrimitiveTypeNode& t) {
     return type != t.type;
 }
 
@@ -217,7 +217,7 @@ ArrayTypeNode::setType(enum TypeEnum type_){
     type->setType(type_);
 }
 
-TypeEnum 
+TypeNode::TypeEnum 
 ArrayTypeNode::getTypeEnum() const {
     return type->getTypeEnum();
 }
@@ -233,14 +233,14 @@ ArrayTypeNode::getSize(){
 }
 
 bool
-ArrayTypeNode::operator== (const ArrayTypeNode& t) const {
+ArrayTypeNode::operator== (const ArrayTypeNode& t) {
     if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
         return true;
     return false;
 }
 
 bool
-ArrayTypeNode::operator!= (const ArrayTypeNode& t) const {
+ArrayTypeNode::operator!= (const ArrayTypeNode& t) {
     if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
         return false;
     return true;
@@ -287,7 +287,6 @@ IdentifierNode::visit (ASTVisitorBase* visitor) {
 // ECE467 STUDENT: implement the class
 
 ParameterNode::ParameterNode() : ASTNode(){
-    type = new TypeNode();
     name = new IdentifierNode();
 }
 
@@ -341,19 +340,19 @@ ExprNode::setType(PrimitiveTypeNode* type_){
 void 
 ExprNode::setTypeInt(){
     assert(type!=nullptr);
-    type->setType(Int);
+    type->setType(TypeNode::TypeEnum::Int);
 }
 
 void 
 ExprNode::setTypeBool(){
     assert(type!=nullptr);
-    type->setType(Bool);
+    type->setType(TypeNode::TypeEnum::Bool);
 }
 
 void 
 ExprNode::setTypeVoid(){
     assert(type!=nullptr);
-    type->setType(Void);
+    type->setType(TypeNode::TypeEnum::Void);
 }
 
 PrimitiveTypeNode* 
@@ -368,7 +367,6 @@ ExprNode::getType(){
 // ECE467 STUDENT: implement the class
 
 UnaryExprNode::UnaryExprNode() : ExprNode(){
-    operand = new ExprNode();
     opcode = Unset;
 }
 
@@ -393,7 +391,7 @@ UnaryExprNode::setOperand(ExprNode *operand_){
     operand = operand_;
 }
 
-Opcode 
+ExprNode::Opcode 
 UnaryExprNode::getOpcode(){
     return opcode;
 }
@@ -405,47 +403,19 @@ UnaryExprNode::setOpcode(Opcode code){
 
 void 
 UnaryExprNode::setOpcode(std::string code){
-    switch (code) {
-        case "+":
-            opcode = Addition;
-            break;
-        case "-":
-            opcode = Subtraction;
-            break;
-        case "*":
-            opcode = Multiplication;
-            break;
-        case "/":
-            opcode = Division;
-            break;
-        case "!":
-            opcode = Not;
-            break;
-        case "-":
-            opcode = Minus;
-            break;
-        case "&&":
-            opcode = And;
-            break;
-        case "||":opcode = code;
-            opcode = NotEqual;
-            break;
-        case "<":
-            opcode = LessThan;
-            break;
-        case "<=":
-            opcode = LessorEqual;
-            break;
-        case ">":
-            opcode = Greater;
-            break;
-        case ">=":
-            opcode = GreaterorEqual;
-            break;
-        default:
-            opcode = Unset;
-            break;
-    }
+    if(code == "+") opcode = Addition;
+    else if(code == "-") opcode = Subtraction;
+    else if(code == "*") opcode = Multiplication;
+    else if(code == "/") opcode = Division;
+    else if(code == "!") opcode = Not;
+    else if(code == "-") opcode = Minus;
+    else if(code == "&&") opcode = And;
+    else if(code == "||") opcode = NotEqual;
+    else if(code == "<") opcode = LessThan;
+    else if(code == "<=") opcode = LessorEqual;
+    else if(code == ">") opcode = Greater;
+    else if(code == ">=") opcode = GreaterorEqual;
+    else opcode = Unset;
 }
 
 void 
@@ -459,8 +429,6 @@ UnaryExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 BinaryExprNode::BinaryExprNode(){
-    left = new ExprNode();
-    right = new ExprNode();
     opcode = Unset;
 }
 
@@ -482,7 +450,7 @@ BinaryExprNode::getLeft(){
     return left;
 }
 
-void 
+void
 BinaryExprNode::setLeft(ExprNode *l){
     left = l;
 }
@@ -498,7 +466,7 @@ BinaryExprNode::setRight(ExprNode* r){
     right = r;
 }
 
-Opcode 
+ExprNode::Opcode 
 BinaryExprNode::getOpcode(){
     return opcode;
 }
@@ -510,47 +478,19 @@ BinaryExprNode::setOpcode(Opcode code){
 
 void 
 BinaryExprNode::setOpcode(std::string code){
-    switch (code) {
-        case "+":
-            opcode = Addition;
-            break;
-        case "-":
-            opcode = Subtraction;
-            break;
-        case "*":
-            opcode = Multiplication;
-            break;
-        case "/":
-            opcode = Division;
-            break;
-        case "!":
-            opcode = Not;
-            break;
-        case "-":
-            opcode = Minus;
-            break;
-        case "&&":
-            opcode = And;
-            break;
-        case "||":opcode = code;
-            opcode = NotEqual;
-            break;
-        case "<":
-            opcode = LessThan;
-            break;
-        case "<=":
-            opcode = LessorEqual;
-            break;
-        case ">":
-            opcode = Greater;
-            break;
-        case ">=":
-            opcode = GreaterorEqual;
-            break;
-        default:
-            opcode = Unset;
-            break;
-    }
+    if(code == "+") opcode = Addition;
+    else if(code == "-") opcode = Subtraction;
+    else if(code == "*") opcode = Multiplication;
+    else if(code == "/") opcode = Division;
+    else if(code == "!") opcode = Not;
+    else if(code == "-") opcode = Minus;
+    else if(code == "&&") opcode = And;
+    else if(code == "||") opcode = NotEqual;
+    else if(code == "<") opcode = LessThan;
+    else if(code == "<=") opcode = LessorEqual;
+    else if(code == ">") opcode = Greater;
+    else if(code == ">=") opcode = GreaterorEqual;
+    else opcode = Unset;
 }
 
 void 
@@ -564,9 +504,7 @@ BinaryExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 
-BoolExprNode::BoolExprNode() : ExprNode(){
-    value = new ExprNode();
-}
+BoolExprNode::BoolExprNode() : ExprNode(){}
 BoolExprNode::BoolExprNode(ExprNode *val) : ExprNode(){
     value = val;
 }
@@ -578,7 +516,7 @@ void
 BoolExprNode::setValue(ExprNode *val){
     value = val;
 }
-Opcode 
+ExprNode::Opcode 
 BoolExprNode::getOpcode(){
     assert(false);
     return Unset;
@@ -594,9 +532,7 @@ BoolExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 
-IntExprNode::IntExprNode() : ExprNode(){
-    value = new ExprNode();
-}
+IntExprNode::IntExprNode() : ExprNode(){}
 
 IntExprNode::IntExprNode(ExprNode *val) : ExprNode(){
     value = val;
@@ -612,7 +548,7 @@ IntExprNode::setValue(ExprNode *val){
     value = val;
 }
 
-Opcode 
+ExprNode::Opcode 
 IntExprNode::getOpcode(){
     assert(false);
     return Unset;
@@ -672,9 +608,7 @@ IntConstantNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-ArgumentNode::ArgumentNode() : ASTNode(){
-    this->expr = new ExprNode();
-}
+ArgumentNode::ArgumentNode() : ASTNode(){}
 
 ArgumentNode::ArgumentNode(ExprNode *expr_) : ASTNode(){
     expr = expr_;
@@ -757,12 +691,12 @@ CallExprNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 ReferenceExprNode::ReferenceExprNode() : ExprNode(){
     name = new IdentifierNode();
-    index = IntExprNode();
+    index = new IntExprNode();
 }
 
 ReferenceExprNode::ReferenceExprNode(IdentifierNode *name_) : ExprNode(){
     name = name_;
-    index = IntExprNode();
+    index = new IntExprNode();
 }
 
 ReferenceExprNode::ReferenceExprNode(IdentifierNode *name_, IntExprNode *index_) : ExprNode(){
@@ -802,7 +736,6 @@ ReferenceExprNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 
 DeclNode::DeclNode() : ASTNode(){
-    type = new TypeNode();
     name = new IdentifierNode();
 }
 
@@ -840,7 +773,7 @@ ScalarDeclNode::ScalarDeclNode(PrimitiveTypeNode*& type_, IdentifierNode*& name_
 
 PrimitiveTypeNode* 
 ScalarDeclNode::getType(){
-    return static_cast<PrimitiveTypeNode*>(type);
+    return static_cast<PrimitiveTypeNode*>(getType());
 }
 
 void 
@@ -854,11 +787,11 @@ ScalarDeclNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 ArrayDeclNode::ArrayDeclNode() : DeclNode(){ }
-ArrayDeclNode::ArrayDeclNode(PrimitiveTypeNode*& type_, IdentifierNode*& name_) : DeclNode(type_, name_){ }
+ArrayDeclNode::ArrayDeclNode(ArrayTypeNode* type_, IdentifierNode* name_) : DeclNode(type_, name_){ }
 
-PrimitiveTypeNode* 
+ArrayTypeNode* 
 ArrayDeclNode::getType(){
-    return static_cast<ArrayTypeNode*>(type);
+    return static_cast<ArrayTypeNode*>(DeclNode::getType());
 }
 
 void 
@@ -924,7 +857,7 @@ FunctionDeclNode::setBody(ScopeNode* val){
 
 void 
 FunctionDeclNode::setRetType(PrimitiveTypeNode* type_){
-    type = type_;
+    DeclNode::setType(type_);
 }
 
 void 
@@ -949,7 +882,7 @@ FunctionDeclNode::getBody(){
 
 PrimitiveTypeNode* 
 FunctionDeclNode::getRetType(){
-    return static_cast<PrimitiveTypeNode* >(type);
+    return static_cast<PrimitiveTypeNode* >(DeclNode::getType());
 }
 
 std::vector<ParameterNode*> 
@@ -964,7 +897,7 @@ FunctionDeclNode::getNumParameters(){
 
 PrimitiveTypeNode *
 FunctionDeclNode::getType(){
-    return static_cast<PrimitiveTypeNode* >(type);
+    return static_cast<PrimitiveTypeNode* >(DeclNode::getType());
 }
 
 void 
@@ -977,9 +910,7 @@ FunctionDeclNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-ExprStmtNode::ExprStmtNode() : StmtNode(){
-    expr = new ExprNode();
-}
+ExprStmtNode::ExprStmtNode() : StmtNode(){}
 
 ExprStmtNode::ExprStmtNode(ExprNode* exp) : StmtNode(){
     expr = exp;
@@ -1007,10 +938,9 @@ ExprStmtNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 AssignStmtNode::AssignStmtNode() : StmtNode(){
     target = new ReferenceExprNode();
-    val = new ExprNode();
 }
 
-AssignStmtNode::AssignStmtNode(ReferenceExprNode* target_, ExprNode* val_): StmtNode{
+AssignStmtNode::AssignStmtNode(ReferenceExprNode* target_, ExprNode* val_): StmtNode(){
     target = target_;
     val = val_;
 }
@@ -1046,10 +976,7 @@ AssignStmtNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 IfStmtNode::IfStmtNode() : StmtNode(){
-    condition = new ExprNode();
-    Then = new StmtNode();
-    Else = new StmtNode();
-    hasElse = true;
+    hasElse = false;
 }
 
 IfStmtNode::IfStmtNode(ExprNode* cond, StmtNode* then_) : StmtNode(){
@@ -1067,12 +994,12 @@ IfStmtNode::IfStmtNode(ExprNode* cond, StmtNode* then_, StmtNode* else_) : StmtN
 
 ExprNode* 
 IfStmtNode::getCondition(){
-    return cond;
+    return condition;
 }
 
 void 
 IfStmtNode::setCondition(ExprNode* condition_){
-    cond =  condition_;
+    condition =  condition_;
 }
 
 bool 
@@ -1116,10 +1043,7 @@ IfStmtNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-WhileStmtNode::WhileStmtNode() : StmtNode(){
-    condition = new ExprNode();
-    body = new StmtNode();
-}
+WhileStmtNode::WhileStmtNode() : StmtNode(){}
 
 WhileStmtNode::WhileStmtNode(ExprNode* cond, StmtNode* body_) : StmtNode(){
     condition = cond;
@@ -1181,6 +1105,6 @@ ReturnStmtNode::returnVoid(){
 }
 
 void 
-ReturnStmtNode::visit(ASTVisitorBase* visitor) override{
+ReturnStmtNode::visit(ASTVisitorBase* visitor){
     visitor->visitReturnStmtNode(this);
 }

@@ -76,3 +76,4 @@ SemanticAnalyzer::addError (const SemaError& err) {
 
 // ECE467 STUDENT: implement the visitor classes, perfoming
 // semantic analysis
+}

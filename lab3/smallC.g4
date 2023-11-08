@@ -34,8 +34,16 @@ returns [smallc::ProgramNode *prg]
 
 preamble:  '#include' '"scio.h"';
 
-decls :
-    scalarDeclList
+decls 
+returns [std::vector<smallc::DeclNode *> declarations]
+:
+    scalarDeclList 
+{
+    declarations.reserve($scalarDeclList.scalars.size());
+    for(smallc::DeclNode * decl : $scalarDeclList.scalars){
+        declarations.push_back(decl);
+    }
+}
     | arrDeclList
     | fcnProto
     | fcnDecl
@@ -59,7 +67,9 @@ returns [std::vector<smallc::ScalarDeclNode*> scalars]
     }
 ;
 
-scalarDecl :
+scalarDecl 
+returns [smallc::ScalarDeclNode* decl]
+:
     varType varName ';'
 ;
 
@@ -68,7 +78,9 @@ arrDeclList :
     | arrDecl arrDeclList
 ;
 
-arrDecl :
+arrDecl 
+returns [smallc::ScalarDeclNode* decl]
+:
     varType arrName '[' intConst ']' ';'
 ;
 
@@ -115,7 +127,9 @@ returns[smallc::ScopeNode* scope_]
     )* '}'
 ;
 
-stmt :
+stmt 
+returns [smallc::StmtNode* statement]
+:
     expr ';'
     | assignStmt
     | ifStmt

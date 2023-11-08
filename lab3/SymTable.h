@@ -47,7 +47,7 @@ public:
 // Symbol table class
 template<class T>
 class SymTable {
-private;
+private:
     std::map<std::string, T> table;
 public:
     bool contains(const std::string &name);

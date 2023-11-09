@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <cstdlib>
 
 using namespace smallc;
 
@@ -99,8 +100,8 @@ ASTNode::getFunction () {
     return nullptr;
 }
 
-void
-ASTNode::visit(ASTVisitorBase* visitor) { }
+// void
+// ASTNode::visit(ASTVisitorBase* visitor) { }
 
 /**********************************************************************************/
 /* The ProgramNode Class                                                          */
@@ -146,6 +147,11 @@ ProgramNode::visit (ASTVisitorBase* visitor) {
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
+void 
+TypeNode::setType(TypeEnum){}
+
+TypeNode::TypeEnum 
+TypeNode::getTypeEnum() const{return TypeNode::TypeEnum::Void; }
 
 bool
 TypeNode::isArray(){
@@ -159,7 +165,7 @@ TypeNode::isArray(){
 // ECE467 STUDENT: implement the class
 
 PrimitiveTypeNode::PrimitiveTypeNode() : TypeNode(){
-    type = Void;
+    type = TypeNode::TypeEnum::Void;
 }
 
 PrimitiveTypeNode::PrimitiveTypeNode(TypeEnum type_) : TypeNode(){
@@ -297,7 +303,6 @@ ParameterNode::ParameterNode(TypeNode *type_, IdentifierNode *name_): ASTNode(){
 
 void
 ParameterNode::setType(TypeNode *type_){
-    // if(type != nullptr) delete type;
     type = type_;
 }
 
@@ -309,7 +314,7 @@ ParameterNode::getType(){
 
 void 
 ParameterNode::setIdent(IdentifierNode *&name_){
-    // if(name != nullptr) delete name;
+    if(name != nullptr) delete name;
     name = name_;
 }
 
@@ -567,12 +572,17 @@ IntExprNode::visit(ASTVisitorBase* visitor){
 
 ConstantExprNode::ConstantExprNode(const std::string &source_) : ExprNode(){
     source = source_;
-    val = 0;
+    if(source == "true") val = 1;
+    else if(source == "false") val = 0;
+    else val = std::atoi(source.c_str());
 }
 
 void 
 ConstantExprNode::setSource(const std::string &source_){
     source = source_;
+    if(source == "true") val = 1;
+    else if(source == "false") val = 0;
+    else val = std::atoi(source.c_str());
 }
 
 int 
@@ -711,11 +721,13 @@ ReferenceExprNode::getIdent(){
 
 void 
 ReferenceExprNode::setIdent(IdentifierNode *name_){
+    if(name != nullptr) delete name;
     name = name_;
 }
 
 void 
 ReferenceExprNode::setIndex(IntExprNode *index_){
+    if(index != nullptr) delete index;
     index = index_;
 }
 
@@ -746,6 +758,7 @@ DeclNode::DeclNode(TypeNode* type_, IdentifierNode* name_) : ASTNode(){
 
 void 
 DeclNode::setName(IdentifierNode* name_){
+    if(name != nullptr) delete name;
     name = name_;
 }
 
@@ -757,6 +770,10 @@ DeclNode::setType(TypeNode* type_){
 IdentifierNode* 
 DeclNode::getIdent(){
     return name;
+}
+TypeNode* 
+DeclNode::getType(){
+    return type;
 }
 
 bool isGlobal(){
@@ -773,7 +790,7 @@ ScalarDeclNode::ScalarDeclNode(PrimitiveTypeNode*& type_, IdentifierNode*& name_
 
 PrimitiveTypeNode* 
 ScalarDeclNode::getType(){
-    return static_cast<PrimitiveTypeNode*>(getType());
+    return static_cast<PrimitiveTypeNode*>(DeclNode::getType());
 }
 
 void 

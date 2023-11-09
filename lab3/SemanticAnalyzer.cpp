@@ -76,4 +76,94 @@ SemanticAnalyzer::addError (const SemaError& err) {
 
 // ECE467 STUDENT: implement the visitor classes, perfoming
 // semantic analysis
+void SemanticAnalyzer::visitASTNode(ASTNode *node) {
+
+}
+void SemanticAnalyzer::visitArgumentNode(ArgumentNode *arg) {
+
+}
+void SemanticAnalyzer::visitDeclNode(DeclNode *decl) {
+
+}
+void SemanticAnalyzer::visitArrayDeclNode(ArrayDeclNode *array) {
+
+}
+void SemanticAnalyzer::visitFunctionDeclNode(FunctionDeclNode *func) {
+
+}
+void SemanticAnalyzer::visitScalarDeclNode(ScalarDeclNode *scalar) {
+
+}
+void SemanticAnalyzer::visitExprNode(ExprNode *exp) {
+
+}
+void SemanticAnalyzer::visitBinaryExprNode(BinaryExprNode *bin) {
+
+}
+void SemanticAnalyzer::visitBoolExprNode(BoolExprNode *boolExpr) {
+
+}
+void SemanticAnalyzer::visitCallExprNode(CallExprNode *call) {
+
+}
+void SemanticAnalyzer::visitConstantExprNode(ConstantExprNode *constant) {
+
+}
+void SemanticAnalyzer::visitBoolConstantNode(BoolConstantNode *boolConst) {
+
+}
+void SemanticAnalyzer::visitIntConstantNode(IntConstantNode *intConst) {
+
+}
+void SemanticAnalyzer::visitIntExprNode(IntExprNode *intExpr) {
+
+}
+void SemanticAnalyzer::visitReferenceExprNode(ReferenceExprNode *ref) {
+
+}
+void SemanticAnalyzer::visitUnaryExprNode(UnaryExprNode *unary) {
+
+}
+void SemanticAnalyzer::visitIdentifierNode(IdentifierNode *id) {
+
+}
+void SemanticAnalyzer::visitParameterNode(ParameterNode *param) {
+
+}
+void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
+
+}
+void SemanticAnalyzer::visitStmtNode(StmtNode *stmt) {
+
+}
+void SemanticAnalyzer::visitAssignStmtNode(AssignStmtNode *assign) {
+
+}
+void SemanticAnalyzer::visitExprStmtNode(ExprStmtNode *expr) {
+
+}
+void SemanticAnalyzer::visitIfStmtNode(IfStmtNode *ifStmt) {
+
+}
+void SemanticAnalyzer::visitReturnStmtNode(ReturnStmtNode *ret) {
+
+}
+void SemanticAnalyzer::visitScopeNode(ScopeNode *scope) {
+
+}
+void SemanticAnalyzer::visitWhileStmtNode(WhileStmtNode *whileStmt) {
+
+}
+void SemanticAnalyzer::visitTypeNode(TypeNode *type) {
+
+}
+void SemanticAnalyzer::visitPrimitiveTypeNode(PrimitiveTypeNode *type) {
+
+}
+void SemanticAnalyzer::visitArrayTypeNode(ArrayTypeNode *type) {
+
+}
+bool SemanticAnalyzer::success(){
+    return true;
+}
 }

@@ -63,13 +63,13 @@ int main(int argc, const char *argv[]) {
 
     // Uncomment these lines to print the AST tree using the provided
     // ASTPrinter class
-    //ASTPrinter *printer = new smallc::ASTPrinter();
-    //if (parser->getNumberOfSyntaxErrors() == 0) {
-        //printer->visitProgramNode(prg);
-    //}
-    //else {
-        //cout << "cannot print AST with parse errors\n";
-    //}
+    ASTPrinter *printer = new smallc::ASTPrinter();
+    if (parser->getNumberOfSyntaxErrors() == 0) {
+        printer->visitProgramNode(prg);
+    }
+    else {
+        cout << "cannot print AST with parse errors\n";
+    }
 
     // ECE467 STUDENT: add code to create your semantic analyzer
     // object and invoke it by by visiting the program node

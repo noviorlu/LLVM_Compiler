@@ -59,7 +59,7 @@ ASTNode::getRoot () { return root; }
 void
 ASTNode::addChild (ASTNode* child) {
     children.push_back(child);
-    if (child != nullptr) child->setParent(this);
+    child->setParent(this);
 }
 
 void
@@ -100,9 +100,6 @@ ASTNode::getFunction () {
     return nullptr;
 }
 
-// void
-// ASTNode::visit(ASTVisitorBase* visitor) { }
-
 /**********************************************************************************/
 /* The ProgramNode Class                                                          */
 /**********************************************************************************/
@@ -140,6 +137,41 @@ ProgramNode::hasVarTable () {
 void
 ProgramNode::visit (ASTVisitorBase* visitor) {
     visitor->visitProgramNode(this);
+}
+
+void 
+ProgramNode::addDeclaration(DeclNode *decl){
+    decl->setParent(this);
+    addChild(decl);
+
+    ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
+    if(cast != nullptr){
+        venv->insert(cast->getIdent()->getName(), VariableEntry(cast->getType()));
+        return;
+    }
+
+    ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
+    if(cast1 != nullptr){
+        venv->insert(cast1->getIdent()->getName(), VariableEntry(cast1->getType()));
+        return;
+    }
+
+    FunctionDeclNode* cast2 = dynamic_cast<FunctionDeclNode *>(decl);
+    if(cast2 != nullptr){
+        fenv->insert(
+            cast2->getIdent()->getName(), 
+            FunctionEntry(
+                
+            )
+        );
+        return;
+    }
+    FunctionEntry(
+                cast2->getRetType(),
+                cast2->getParamTypes(),
+                cast2->getProto()
+            );
+    assert(false);
 }
 
 /**********************************************************************************/
@@ -205,22 +237,26 @@ PrimitiveTypeNode::visit (ASTVisitorBase* visitor) {
 
 ArrayTypeNode::ArrayTypeNode() : TypeNode(){
     type = new PrimitiveTypeNode();
+    type->setParent(this);
     size = 0;
 }
 
 ArrayTypeNode::ArrayTypeNode(PrimitiveTypeNode* type_) : TypeNode(){
     type = type_;
+    type->setParent(this);
     size = 0;
 }
 
 ArrayTypeNode::ArrayTypeNode(PrimitiveTypeNode* type_, int size_) : TypeNode(){
     type = type_;
+    type->setParent(this);
     size = size_;
 }
 
 void
 ArrayTypeNode::setType(enum TypeEnum type_){
     type->setType(type_);
+    type->setParent(this);
 }
 
 TypeNode::TypeEnum 
@@ -293,33 +329,37 @@ IdentifierNode::visit (ASTVisitorBase* visitor) {
 // ECE467 STUDENT: implement the class
 
 ParameterNode::ParameterNode() : ASTNode(){
-    name = new IdentifierNode();
+    type = nullptr;
+    name = nullptr;
 }
 
 ParameterNode::ParameterNode(TypeNode *type_, IdentifierNode *name_): ASTNode(){
     type = type_;
+    type->setParent(this);
     name = name_;
+    name->setParent(this);
 }
 
 void
 ParameterNode::setType(TypeNode *type_){
+    assert(type == nullptr);
     type = type_;
+    type->setParent(this);
 }
 
 TypeNode*& 
 ParameterNode::getType(){
-    assert(type!=nullptr);
     return type;
 }
 
 void 
 ParameterNode::setIdent(IdentifierNode *&name_){
-    if(name != nullptr) delete name;
+    assert(name == nullptr);
     name = name_;
+    name->setParent(this);
 }
 
 IdentifierNode*& ParameterNode::getIdent(){
-    assert(name!=nullptr);
     return name;
 }
 
@@ -335,12 +375,14 @@ ParameterNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 ExprNode::ExprNode() : ASTNode(){
     type = new PrimitiveTypeNode();
+    type->setParent(this);
 }
 
 void 
 ExprNode::setType(PrimitiveTypeNode* type_){
-    // if(type!=nullptr) delete type;
+    if(type != nullptr) delete type;
     type = type_;
+    type->setParent(this);
 }
 void 
 ExprNode::setTypeInt(){
@@ -362,7 +404,6 @@ ExprNode::setTypeVoid(){
 
 PrimitiveTypeNode* 
 ExprNode::getType(){
-    assert(type!=nullptr);
     return type;
 }
 /**********************************************************************************/
@@ -372,28 +413,32 @@ ExprNode::getType(){
 // ECE467 STUDENT: implement the class
 
 UnaryExprNode::UnaryExprNode() : ExprNode(){
+    operand = nullptr;
     opcode = Unset;
 }
 
 UnaryExprNode::UnaryExprNode(ExprNode *expr) : ExprNode(){
     operand = expr;
+    operand->setParent(this);
     opcode = Unset;
 }
 
 UnaryExprNode::UnaryExprNode(ExprNode *expr, Opcode code) : ExprNode(){
     operand = expr;
+    operand->setParent(this);
     opcode = code;
 }
 
 ExprNode* 
 UnaryExprNode::getOperand(){
-    assert(operand!=nullptr);
     return operand;
 }
 
 void 
 UnaryExprNode::setOperand(ExprNode *operand_){
+    if(operand != nullptr) delete operand;
     operand = operand_;
+    operand->setParent(this);
 }
 
 ExprNode::Opcode 
@@ -434,41 +479,49 @@ UnaryExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 BinaryExprNode::BinaryExprNode(){
+    left = nullptr;
+    right = nullptr;
     opcode = Unset;
 }
 
 BinaryExprNode::BinaryExprNode(ExprNode *l, ExprNode *r){
     left = l;
+    left->setParent(this);
     right = r;
+    left->setParent(this);
     opcode = Unset;
 }
 
 BinaryExprNode::BinaryExprNode(ExprNode *l, ExprNode *r, Opcode code){
     left = l;
+    left->setParent(this);
     right = r;
+    left->setParent(this);
     opcode = code;
 }
 
 ExprNode* 
 BinaryExprNode::getLeft(){
-    assert(left != nullptr);
     return left;
 }
 
 void
 BinaryExprNode::setLeft(ExprNode *l){
+    if(left != nullptr) delete left;
     left = l;
+    left->setParent(this);
 }
 
 ExprNode* 
 BinaryExprNode::getRight(){
-    assert(right != nullptr);
     return right;
 }
 
 void 
 BinaryExprNode::setRight(ExprNode* r){
+    if(right != nullptr) delete right;
     right = r;
+    right->setParent(this);
 }
 
 ExprNode::Opcode 
@@ -509,23 +562,32 @@ BinaryExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 
-BoolExprNode::BoolExprNode() : ExprNode(){}
+BoolExprNode::BoolExprNode() : ExprNode(){
+    value = nullptr;
+}
+
 BoolExprNode::BoolExprNode(ExprNode *val) : ExprNode(){
     value = val;
+    value->setParent(this);
 }
+
 ExprNode* 
 BoolExprNode::getValue(){
     return value;
 }
+
 void 
 BoolExprNode::setValue(ExprNode *val){
+    if(value != nullptr) delete value;
     value = val;
+    value->setParent(this);
 }
+
 ExprNode::Opcode 
 BoolExprNode::getOpcode(){
-    assert(false);
     return Unset;
 }
+
 void 
 BoolExprNode::visit(ASTVisitorBase* visitor){
     visitor->visitBoolExprNode(this);
@@ -537,10 +599,13 @@ BoolExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 
-IntExprNode::IntExprNode() : ExprNode(){}
+IntExprNode::IntExprNode() : ExprNode(){
+    value = nullptr;
+}
 
 IntExprNode::IntExprNode(ExprNode *val) : ExprNode(){
     value = val;
+    value->setParent(this);
 }
 
 ExprNode* 
@@ -550,12 +615,13 @@ IntExprNode::getValue(){
 
 void 
 IntExprNode::setValue(ExprNode *val){
+    if(value != nullptr) delete value;
     value = val;
+    value->setParent(this);
 }
 
 ExprNode::Opcode 
 IntExprNode::getOpcode(){
-    assert(false);
     return Unset;
 }
 
@@ -572,9 +638,7 @@ IntExprNode::visit(ASTVisitorBase* visitor){
 
 ConstantExprNode::ConstantExprNode(const std::string &source_) : ExprNode(){
     source = source_;
-    if(source == "true") val = 1;
-    else if(source == "false") val = 0;
-    else val = std::atoi(source.c_str());
+    val = 0;
 }
 
 void 
@@ -618,10 +682,13 @@ IntConstantNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-ArgumentNode::ArgumentNode() : ASTNode(){}
+ArgumentNode::ArgumentNode() : ASTNode(){
+    expr = nullptr;
+}
 
 ArgumentNode::ArgumentNode(ExprNode *expr_) : ASTNode(){
     expr = expr_;
+    expr->setParent(this);
 }
 
 ExprNode* 
@@ -631,7 +698,9 @@ ArgumentNode::getExpr(){
 
 void 
 ArgumentNode::setExpr(ExprNode *expr_){
+    if(expr != nullptr) delete expr;
     expr = expr_;
+    expr->setParent(this);
 }
 
 void 
@@ -646,16 +715,20 @@ ArgumentNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 
 CallExprNode::CallExprNode() : ExprNode(){
-    name = new IdentifierNode();
+    name = nullptr;
 }
 
 CallExprNode::CallExprNode(IdentifierNode *callee) : ExprNode(){
     name = callee;
+    name->setParent(this);
 }
 
 CallExprNode::CallExprNode(IdentifierNode *callee, std::vector<ArgumentNode*> arglist) : ExprNode(){
     name = callee;
+    name->setParent(this);
     args = arglist;
+    for(ArgumentNode* arg : args)
+        arg->setParent(this);
 }
 
 ArgumentNode *
@@ -671,17 +744,22 @@ CallExprNode::getArguments(){
 
 void 
 CallExprNode::addArgument(ArgumentNode *arg){
+    arg->setParent(this);
     args.push_back(arg);
 }
 
 void 
 CallExprNode::setArguments(std::vector<ArgumentNode *> args_){
     args = args_;
+    for(ArgumentNode* arg : args)
+        arg->setParent(this);
 }
 
 void 
 CallExprNode::setIdent(IdentifierNode *callee){
+    if(name != nullptr) delete name;
     name = callee;
+    name->setParent(this);
 }
 
 IdentifierNode *
@@ -700,18 +778,21 @@ CallExprNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 ReferenceExprNode::ReferenceExprNode() : ExprNode(){
-    name = new IdentifierNode();
-    index = new IntExprNode();
+    name = nullptr;
+    index = nullptr;
 }
 
 ReferenceExprNode::ReferenceExprNode(IdentifierNode *name_) : ExprNode(){
     name = name_;
-    index = new IntExprNode();
+    name->setParent(this);
+    index = nullptr;
 }
 
 ReferenceExprNode::ReferenceExprNode(IdentifierNode *name_, IntExprNode *index_) : ExprNode(){
     name = name_;
+    name->setParent(this);
     index = index_;
+    index->setParent(this);
 }
 
 IdentifierNode* 
@@ -723,12 +804,14 @@ void
 ReferenceExprNode::setIdent(IdentifierNode *name_){
     if(name != nullptr) delete name;
     name = name_;
+    name->setParent(this);
 }
 
 void 
 ReferenceExprNode::setIndex(IntExprNode *index_){
     if(index != nullptr) delete index;
     index = index_;
+    index->setParent(this);
 }
 
 IntExprNode* 
@@ -748,23 +831,29 @@ ReferenceExprNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 
 DeclNode::DeclNode() : ASTNode(){
-    name = new IdentifierNode();
+    type = nullptr;
+    name = nullptr;
 }
 
 DeclNode::DeclNode(TypeNode* type_, IdentifierNode* name_) : ASTNode(){
     type = type_;
+    type->setParent(this);
     name = name_;
+    name->setParent(this);
 }
 
 void 
 DeclNode::setName(IdentifierNode* name_){
     if(name != nullptr) delete name;
     name = name_;
+    name->setParent(this);
 }
 
 void 
 DeclNode::setType(TypeNode* type_){
+    if(type != nullptr) delete type;
     type = type_;
+    type->setParent(this);
 }
 
 IdentifierNode* 
@@ -776,8 +865,16 @@ DeclNode::getType(){
     return type;
 }
 
-bool isGlobal(){
-    return true;
+bool 
+DeclNode::isGlobal(){
+    ASTNode* curr = this;
+    assert(curr != nullptr);
+
+    while(!curr->hasVarTable()){
+        curr = curr->getParent();
+        assert(curr != nullptr);
+    }
+    return (curr->getRoot() != nullptr);
 }
 
 /**********************************************************************************/
@@ -833,7 +930,21 @@ ScopeNode::ScopeNode() : StmtNode(){
 }
 void 
 ScopeNode::addDeclaration(DeclNode *decl){
+    decl->setParent(this);
     decls.push_back(decl);
+
+    ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
+    if(cast != nullptr){
+        env->insert(cast->getIdent()->getName(), VariableEntry(cast->getType()));
+        return;
+    }
+    ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
+    if(cast1 != nullptr){
+        env->insert(cast1->getIdent()->getName(), VariableEntry(cast1->getType()));
+        return;
+    }
+
+    assert(false);
 }
 std::vector<DeclNode*> 
 ScopeNode::getDeclarations(){
@@ -845,7 +956,7 @@ ScopeNode::getVarTable(){
 }
 bool 
 ScopeNode::hasVarTable(){
-    return false;
+    return true;
 }
 void 
 ScopeNode::visit(ASTVisitorBase* visitor){
@@ -859,7 +970,7 @@ ScopeNode::visit(ASTVisitorBase* visitor){
 // ECE467 STUDENT: implement the class
 FunctionDeclNode::FunctionDeclNode() : DeclNode(){
     isProto = false;
-    body = new ScopeNode();
+    body = nullptr;
 }
 
 void 
@@ -870,6 +981,7 @@ FunctionDeclNode::setProto(bool val){
 void 
 FunctionDeclNode::setBody(ScopeNode* val){
     body = val;
+    body->setParent(this);
 }
 
 void 
@@ -880,10 +992,13 @@ FunctionDeclNode::setRetType(PrimitiveTypeNode* type_){
 void 
 FunctionDeclNode::setParameter(std::vector<ParameterNode* > parameters){
     params = parameters;
+    for(ParameterNode* param : params)
+        param->setParent(this);
 }
 
 void 
 FunctionDeclNode::addParameter(ParameterNode* param){
+    param->setParent(this);
     params.push_back(param);
 }
 
@@ -907,6 +1022,17 @@ FunctionDeclNode::getParams(){
     return params;
 }
 
+std::vector<TypeNode*> 
+FunctionDeclNode::getParamTypes(){
+    std::vector<TypeNode*> tmp;
+    tmp.reserve(params.size());
+    for(ParameterNode* param : params)
+        tmp.push_back(param->getType());
+    
+    return tmp;
+}
+
+
 unsigned int 
 FunctionDeclNode::getNumParameters(){
     return params.size();
@@ -927,15 +1053,19 @@ FunctionDeclNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-ExprStmtNode::ExprStmtNode() : StmtNode(){}
+ExprStmtNode::ExprStmtNode() : StmtNode(){
+    expr = nullptr;
+}
 
 ExprStmtNode::ExprStmtNode(ExprNode* exp) : StmtNode(){
     expr = exp;
+    expr->setParent(this);
 }
 
 void 
 ExprStmtNode::setExpr(ExprNode* expr_){
     expr = expr_;
+    expr->setParent(this);
 }
 
 ExprNode* 
@@ -954,12 +1084,15 @@ ExprStmtNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 AssignStmtNode::AssignStmtNode() : StmtNode(){
-    target = new ReferenceExprNode();
+    target = nullptr;
+    val = nullptr;
 }
 
 AssignStmtNode::AssignStmtNode(ReferenceExprNode* target_, ExprNode* val_): StmtNode(){
     target = target_;
+    target->setParent(this);
     val = val_;
+    val->setParent(this);
 }
 
 ReferenceExprNode *
@@ -970,6 +1103,7 @@ AssignStmtNode::getTarget(){
 void 
 AssignStmtNode::setTarget(ReferenceExprNode* name){
     target = name;
+    target->setParent(this);
 }
 
 ExprNode* 
@@ -980,6 +1114,7 @@ AssignStmtNode::getValue(){
 void 
 AssignStmtNode::setValue(ExprNode* value){
     val = value;
+    val->setParent(this);
 }
 
 void 
@@ -993,20 +1128,29 @@ AssignStmtNode::visit(ASTVisitorBase* visitor){
 
 // ECE467 STUDENT: implement the class
 IfStmtNode::IfStmtNode() : StmtNode(){
+    condition = nullptr;
     hasElse = false;
+    Then = nullptr;
+    Else = nullptr;
 }
 
 IfStmtNode::IfStmtNode(ExprNode* cond, StmtNode* then_) : StmtNode(){
     condition = cond;
-    Then = then_;
+    condition->setParent(this);
     hasElse = false;
+    Then = then_;
+    Then->setParent(this);
+    Else = nullptr;
 }
 
 IfStmtNode::IfStmtNode(ExprNode* cond, StmtNode* then_, StmtNode* else_) : StmtNode(){
     condition = cond;
-    Then = then_;
-    Else = else_;
+    condition->setParent(this);
     hasElse = true;
+    Then = then_;
+    Then->setParent(this);
+    Else = else_;
+    Else->setParent(this);
 }
 
 ExprNode* 
@@ -1017,6 +1161,7 @@ IfStmtNode::getCondition(){
 void 
 IfStmtNode::setCondition(ExprNode* condition_){
     condition =  condition_;
+    condition->setParent(this);
 }
 
 bool 
@@ -1037,6 +1182,7 @@ IfStmtNode::getThen(){
 void 
 IfStmtNode::setThen(StmtNode* then_){
     Then = then_;
+    Then->setParent(this);
 }
 
 StmtNode *
@@ -1047,6 +1193,7 @@ IfStmtNode::getElse(){
 void 
 IfStmtNode::setElse(StmtNode* else_){
     Else = else_;
+    Else->setParent(this);
 }
 
 void 
@@ -1060,11 +1207,17 @@ IfStmtNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-WhileStmtNode::WhileStmtNode() : StmtNode(){}
+WhileStmtNode::WhileStmtNode() : StmtNode(){
+    condition = nullptr;
+    body = nullptr;
+}
 
 WhileStmtNode::WhileStmtNode(ExprNode* cond, StmtNode* body_) : StmtNode(){
     condition = cond;
+    condition->setParent(this);
+    
     body = body_;
+    body->setParent(this);
 }
 
 ExprNode* 
@@ -1075,6 +1228,7 @@ WhileStmtNode::getCondition(){
 void 
 WhileStmtNode::setCondition(ExprNode* cond){
     condition = cond;
+    condition->setParent(this);
 }
 
 StmtNode* 
@@ -1085,6 +1239,7 @@ WhileStmtNode::getBody(){
 void 
 WhileStmtNode::setBody(StmtNode* body_){
     body = body_;
+    body->setParent(this);
 }
 
 void 
@@ -1104,6 +1259,7 @@ ReturnStmtNode::ReturnStmtNode() : StmtNode(){
 
 ReturnStmtNode::ReturnStmtNode(ExprNode* exp) : StmtNode(){
     ret = exp;
+    ret->setParent(this);
 }
 
 ExprNode* 
@@ -1114,6 +1270,7 @@ ReturnStmtNode::getReturn(){
 void 
 ReturnStmtNode::setReturn(ExprNode* value){
     ret = value;
+    ret->setParent(this);
 }
 
 bool 

@@ -139,7 +139,7 @@ public class smallCParser extends Parser {
 		enterRule(_localctx, 0, RULE_program);
 
 		    ((ProgramContext)_localctx).prg =  new smallc::ProgramNode();
-		    _localctx.prg->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
+		    _localctx.prg->setRoot(_localctx.prg);
 
 		int _la;
 		try {
@@ -174,8 +174,8 @@ public class smallCParser extends Parser {
 				setState(70);
 				((ProgramContext)_localctx).decls = decls();
 
-				    for(unsigned int i = 0; i < ((ProgramContext)_localctx).decls.declarations.size();i++)
-				        _localctx.prg->addChild(((ProgramContext)_localctx).decls.declarations[i]);
+				    for(smallc::DeclNode * decl : ((ProgramContext)_localctx).decls.declarations)
+				        _localctx.prg->addDeclaration(decl);
 
 				}
 				}
@@ -489,7 +489,7 @@ public class smallCParser extends Parser {
 
 	@SuppressWarnings("CheckReturnValue")
 	public static class ArrDeclContext extends ParserRuleContext {
-		public smallc::ScalarDeclNode* arrdecl;
+		public smallc::ArrayDeclNode* arrdecl;
 		public smallc::ArrayTypeNode * type;
 		public VarTypeContext varType;
 		public ArrNameContext arrName;
@@ -529,7 +529,7 @@ public class smallCParser extends Parser {
 			match(T__2);
 
 			        ((ArrDeclContext)_localctx).type =  new smallc::ArrayTypeNode(((ArrDeclContext)_localctx).varType.type, ((ArrDeclContext)_localctx).intConst.intconst->getVal());
-			        ((ArrDeclContext)_localctx).arrdecl =  new smallc::ScalarDeclNode(_localctx.type, ((ArrDeclContext)_localctx).arrName.name);
+			        ((ArrDeclContext)_localctx).arrdecl =  new smallc::ArrayDeclNode(_localctx.type, ((ArrDeclContext)_localctx).arrName.name);
 			    
 			}
 		}
@@ -786,7 +786,7 @@ public class smallCParser extends Parser {
 
 	@SuppressWarnings("CheckReturnValue")
 	public static class ConstantContext extends ParserRuleContext {
-		public smallc::ConstantExprNode* expression;
+		public smallc::ExprNode* expression;
 		public BoolConstContext boolConst;
 		public IntConstContext intConst;
 		public BoolConstContext boolConst() {
@@ -814,7 +814,8 @@ public class smallCParser extends Parser {
 				setState(157);
 				((ConstantContext)_localctx).boolConst = boolConst();
 
-				        ((ConstantContext)_localctx).expression =  ((ConstantContext)_localctx).boolConst.boolconst;
+				        ((ConstantContext)_localctx).expression =  new smallc::BoolExprNode(((ConstantContext)_localctx).boolConst.boolconst);
+				        _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -825,7 +826,8 @@ public class smallCParser extends Parser {
 				setState(160);
 				((ConstantContext)_localctx).intConst = intConst();
 
-				        ((ConstantContext)_localctx).expression =  ((ConstantContext)_localctx).intConst.intconst;
+				        ((ConstantContext)_localctx).expression =  new smallc::IntExprNode(((ConstantContext)_localctx).intConst.intconst);
+				        _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -865,6 +867,7 @@ public class smallCParser extends Parser {
 			((BoolConstContext)_localctx).BOOL = match(BOOL);
 
 			        ((BoolConstContext)_localctx).boolconst =  new smallc::BoolConstantNode((((BoolConstContext)_localctx).BOOL!=null?((BoolConstContext)_localctx).BOOL.getText():null));
+			        _localctx.boolconst->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 			    
 			}
 		}
@@ -934,14 +937,19 @@ public class smallCParser extends Parser {
 					{
 					setState(169);
 					((ScopeContext)_localctx).scalarDecl = scalarDecl();
-					_localctx.scope_->addDeclaration(((ScopeContext)_localctx).scalarDecl.scalardecl);
+
+					        _localctx.scope_->addDeclaration(((ScopeContext)_localctx).scalarDecl.scalardecl);
+
+					    
 					}
 					break;
 				case 2:
 					{
 					setState(172);
 					((ScopeContext)_localctx).arrDecl = arrDecl();
-					_localctx.scope_->addDeclaration(((ScopeContext)_localctx).arrDecl.arrdecl);
+
+					        _localctx.scope_->addDeclaration(((ScopeContext)_localctx).arrDecl.arrdecl);
+					    
 					}
 					break;
 				}
@@ -958,7 +966,9 @@ public class smallCParser extends Parser {
 				{
 				setState(180);
 				((ScopeContext)_localctx).stmt = stmt();
-				_localctx.scope_->addChild(((ScopeContext)_localctx).stmt.statement);
+
+				        _localctx.scope_->addChild(((ScopeContext)_localctx).stmt.statement);
+				    
 				}
 				}
 				setState(187);
@@ -1113,6 +1123,7 @@ public class smallCParser extends Parser {
 		enterRule(_localctx, 30, RULE_assignStmt);
 		 
 		    ((AssignStmtContext)_localctx).assignstatement =  new smallc::AssignStmtNode();
+		    _localctx.assignstatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 
 		try {
 			enterOuterAlt(_localctx, 1);
@@ -1186,6 +1197,7 @@ public class smallCParser extends Parser {
 				((IfStmtContext)_localctx).stmt = stmt();
 
 				        ((IfStmtContext)_localctx).ifstatement =  new smallc::IfStmtNode(((IfStmtContext)_localctx).expr.expression, ((IfStmtContext)_localctx).stmt.statement);
+				        _localctx.ifstatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -1208,6 +1220,7 @@ public class smallCParser extends Parser {
 				((IfStmtContext)_localctx).e = stmt();
 
 				        ((IfStmtContext)_localctx).ifstatement =  new smallc::IfStmtNode(((IfStmtContext)_localctx).expr.expression, ((IfStmtContext)_localctx).then.statement, ((IfStmtContext)_localctx).e.statement);
+				        _localctx.ifstatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -1259,6 +1272,7 @@ public class smallCParser extends Parser {
 			((WhileStmtContext)_localctx).stmt = stmt();
 
 			        ((WhileStmtContext)_localctx).whilestatement =  new smallc::WhileStmtNode(((WhileStmtContext)_localctx).expr.expression, ((WhileStmtContext)_localctx).stmt.statement);
+			        _localctx.whilestatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 			    
 			}
 		}
@@ -1304,6 +1318,7 @@ public class smallCParser extends Parser {
 				match(T__2);
 				 
 				        ((RetStmtContext)_localctx).returnstatement =  new smallc::ReturnStmtNode(((RetStmtContext)_localctx).expr.expression);
+				        _localctx.returnstatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -1316,6 +1331,7 @@ public class smallCParser extends Parser {
 				match(T__2);
 				 
 				        ((RetStmtContext)_localctx).returnstatement =  new smallc::ReturnStmtNode();
+				        _localctx.returnstatement->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -1418,6 +1434,8 @@ public class smallCParser extends Parser {
 				match(T__6);
 
 				        ((ExprContext)_localctx).expression =  new smallc::CallExprNode(((ExprContext)_localctx).fcnName.name, ((ExprContext)_localctx).args.arglist);
+				        _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
+
 				    
 				}
 				break;
@@ -1440,6 +1458,7 @@ public class smallCParser extends Parser {
 				        ((ExprContext)_localctx).tmp1 =  new smallc::UnaryExprNode(((ExprContext)_localctx).expr.expression);
 				        _localctx.tmp1->setOpcode((((ExprContext)_localctx).op!=null?((ExprContext)_localctx).op.getText():null));
 				        ((ExprContext)_localctx).expression =  _localctx.tmp1;
+				        _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -1480,6 +1499,7 @@ public class smallCParser extends Parser {
 						                  ((ExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((ExprContext)_localctx).l.expression, ((ExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((ExprContext)_localctx).op!=null?((ExprContext)_localctx).op.getText():null));
 						                  ((ExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1507,6 +1527,7 @@ public class smallCParser extends Parser {
 						                  ((ExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((ExprContext)_localctx).l.expression, ((ExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((ExprContext)_localctx).op!=null?((ExprContext)_localctx).op.getText():null));
 						                  ((ExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1525,6 +1546,7 @@ public class smallCParser extends Parser {
 						                  ((ExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((ExprContext)_localctx).l.expression, ((ExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((ExprContext)_localctx).op!=null?((ExprContext)_localctx).op.getText():null));
 						                  ((ExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1543,6 +1565,7 @@ public class smallCParser extends Parser {
 						                  ((ExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((ExprContext)_localctx).l.expression, ((ExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((ExprContext)_localctx).op!=null?((ExprContext)_localctx).op.getText():null));
 						                  ((ExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1685,6 +1708,7 @@ public class smallCParser extends Parser {
 						                  ((IntExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((IntExprContext)_localctx).l.expression, ((IntExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((IntExprContext)_localctx).op!=null?((IntExprContext)_localctx).op.getText():null));
 						                  ((IntExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1712,6 +1736,7 @@ public class smallCParser extends Parser {
 						                  ((IntExprContext)_localctx).tmp =  new smallc::BinaryExprNode(((IntExprContext)_localctx).l.expression, ((IntExprContext)_localctx).r.expression);
 						                  _localctx.tmp->setOpcode((((IntExprContext)_localctx).op!=null?((IntExprContext)_localctx).op.getText():null));
 						                  ((IntExprContext)_localctx).expression =  _localctx.tmp;
+						                  _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 						              
 						}
 						break;
@@ -1761,6 +1786,7 @@ public class smallCParser extends Parser {
 		enterRule(_localctx, 42, RULE_var);
 
 		    ((VarContext)_localctx).expression =  new smallc::ReferenceExprNode();
+		    _localctx.expression->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 
 		try {
 			setState(335);
@@ -1884,6 +1910,7 @@ public class smallCParser extends Parser {
 		enterRule(_localctx, 46, RULE_paramEntry);
 		 
 		    ((ParamEntryContext)_localctx).paramentry =  new smallc::ParameterNode();
+		    _localctx.paramentry->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 
 		try {
 			setState(352);
@@ -1915,6 +1942,7 @@ public class smallCParser extends Parser {
 				        ((ParamEntryContext)_localctx).savetype =  ((ParamEntryContext)_localctx).varType.type;
 				        _localctx.paramentry->setIdent(((ParamEntryContext)_localctx).arrName.name);
 				        _localctx.paramentry->setType(new smallc::ArrayTypeNode(_localctx.savetype));
+				        _localctx.paramentry->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;
@@ -2072,6 +2100,7 @@ public class smallCParser extends Parser {
 			((ArgEntryContext)_localctx).expr = expr(0);
 			 
 			        ((ArgEntryContext)_localctx).arg =  new smallc::ArgumentNode(((ArgEntryContext)_localctx).expr.expression);
+			        _localctx.arg->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 			    
 			}
 		}
@@ -2282,6 +2311,8 @@ public class smallCParser extends Parser {
 				((IntConstContext)_localctx).INT = match(INT);
 
 				        ((IntConstContext)_localctx).intconst =  new smallc::IntConstantNode((((IntConstContext)_localctx).INT!=null?((IntConstContext)_localctx).INT.getText():null));
+				        _localctx.intconst->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
+
 				    
 				}
 				break;
@@ -2294,6 +2325,7 @@ public class smallCParser extends Parser {
 				((IntConstContext)_localctx).INT = match(INT);
 
 				        ((IntConstContext)_localctx).intconst =  new smallc::IntConstantNode("-" + (((IntConstContext)_localctx).INT!=null?((IntConstContext)_localctx).INT.getText():null));
+				        _localctx.intconst->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 				    
 				}
 				break;

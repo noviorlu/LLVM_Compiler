@@ -22,13 +22,13 @@ program
 returns [smallc::ProgramNode *prg]
 @init {
     $prg = new smallc::ProgramNode();
-    $prg->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+    $prg->setRoot($prg);
 }
 : (preamble {$prg->setIo(true);}
 | ) (decls
 {
-    for(unsigned int i = 0; i < $decls.declarations.size();i++)
-        $prg->addChild($decls.declarations[i]);
+    for(smallc::DeclNode * decl : $decls.declarations)
+        $prg->addDeclaration(decl);
 }
 )* EOF ;
 
@@ -101,12 +101,12 @@ returns [std::vector<smallc::ArrayDeclNode *> arrdecls]
 ;
 
 arrDecl 
-returns [smallc::ScalarDeclNode* arrdecl] locals[smallc::ArrayTypeNode * type]
+returns [smallc::ArrayDeclNode* arrdecl] locals[smallc::ArrayTypeNode * type]
 :
     varType arrName '[' intConst ']' ';'
     {
         $type = new smallc::ArrayTypeNode($varType.type, $intConst.intconst->getVal());
-        $arrdecl = new smallc::ScalarDeclNode($type, $arrName.name);
+        $arrdecl = new smallc::ArrayDeclNode($type, $arrName.name);
     }
 ;
 
@@ -174,15 +174,17 @@ returns [smallc::PrimitiveTypeNode* rettype]
 ;
 
 constant
-returns[smallc::ConstantExprNode* expression]
+returns[smallc::ExprNode* expression]
 :
     boolConst
     {
-        $expression = $boolConst.boolconst;
+        $expression = new smallc::BoolExprNode($boolConst.boolconst);
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | intConst
     {
-        $expression = $intConst.intconst;
+        $expression = new smallc::IntExprNode($intConst.intconst);
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -192,6 +194,7 @@ returns[smallc::BoolConstantNode* boolconst]
     BOOL
     {
         $boolconst = new smallc::BoolConstantNode($BOOL.text);
+        $boolconst->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -203,11 +206,18 @@ returns[smallc::ScopeNode* scope_]
 }
 :
     '{' (scalarDecl
-    {$scope_->addDeclaration($scalarDecl.scalardecl);}
+    {
+        $scope_->addDeclaration($scalarDecl.scalardecl);
+
+    }
     |arrDecl
-    {$scope_->addDeclaration($arrDecl.arrdecl);}
+    {
+        $scope_->addDeclaration($arrDecl.arrdecl);
+    }
     )* (stmt
-    {$scope_->addChild($stmt.statement);}
+    {
+        $scope_->addChild($stmt.statement);
+    }
     )* '}'
 ;
 
@@ -241,6 +251,7 @@ assignStmt
 returns [smallc::AssignStmtNode* assignstatement]
 @init{ 
     $assignstatement = new smallc::AssignStmtNode();
+    $assignstatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
 }
 :
     var '=' expr ';'
@@ -256,10 +267,12 @@ returns [smallc::IfStmtNode* ifstatement]
     'if' '(' expr ')' stmt
     {
         $ifstatement = new smallc::IfStmtNode($expr.expression, $stmt.statement);
+        $ifstatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | 'if' '(' expr ')' then=stmt 'else' e=stmt
     {
         $ifstatement = new smallc::IfStmtNode($expr.expression, $then.statement, $e.statement);
+        $ifstatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -269,6 +282,7 @@ returns [smallc::WhileStmtNode* whilestatement]
     'while' '(' expr ')' stmt
     {
         $whilestatement = new smallc::WhileStmtNode($expr.expression, $stmt.statement);
+        $whilestatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -278,10 +292,12 @@ returns [smallc::ReturnStmtNode* returnstatement]
     'return' expr ';'
     { 
         $returnstatement = new smallc::ReturnStmtNode($expr.expression);
+        $returnstatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     |'return' ';'
     { 
         $returnstatement = new smallc::ReturnStmtNode();
+        $returnstatement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -299,36 +315,43 @@ returns[smallc::ExprNode* expression] locals [smallc::BinaryExprNode* tmp, small
     | fcnName '(' args ')'
     {
         $expression = new smallc::CallExprNode($fcnName.name, $args.arglist);
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+
     }
     | op=('!' | '-') expr
     {
         $tmp1 = new smallc::UnaryExprNode($expr.expression);
         $tmp1->setOpcode($op.text);
         $expression = $tmp1;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | l=expr op=('<' | '<=' | '>' | '>=') r=expr
     {
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | l=expr op=('==' | '!=') r=expr
     {
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | l=expr op='||' r=expr
     {
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | l=expr op='&&' r=expr
     {
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -348,12 +371,14 @@ returns[smallc::ExprNode* expression] locals [smallc::BinaryExprNode* tmp]
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | l=intExpr op=('+' | '-' ) r=intExpr
     {
         $tmp = new smallc::BinaryExprNode($l.expression, $r.expression);
         $tmp->setOpcode($op.text);
         $expression = $tmp;
+        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
     | '(' intExpr ')'
     {
@@ -365,6 +390,7 @@ var
 returns[smallc::ReferenceExprNode* expression]
 @init{
     $expression = new smallc::ReferenceExprNode();
+    $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
 }
 :
     varName
@@ -391,6 +417,7 @@ paramEntry
 returns[smallc::ParameterNode* paramentry] locals [smallc::PrimitiveTypeNode* savetype]
 @init{ 
     $paramentry = new smallc::ParameterNode();
+    $paramentry->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
 }
 :
     varType varName
@@ -403,6 +430,7 @@ returns[smallc::ParameterNode* paramentry] locals [smallc::PrimitiveTypeNode* sa
         $savetype = $varType.type;
         $paramentry->setIdent($arrName.name);
         $paramentry->setType(new smallc::ArrayTypeNode($savetype));
+        $paramentry->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -437,6 +465,7 @@ returns[smallc::ArgumentNode* arg]
     expr
     { 
         $arg = new smallc::ArgumentNode($expr.expression);
+        $arg->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -487,10 +516,13 @@ returns[smallc::IntConstantNode* intconst]
     INT
     {
         $intconst = new smallc::IntConstantNode($INT.text);
+        $intconst->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+
     }
     | '-' INT
     {
         $intconst = new smallc::IntConstantNode("-" + $INT.text);
+        $intconst->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 

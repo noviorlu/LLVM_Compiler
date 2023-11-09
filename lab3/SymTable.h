@@ -39,7 +39,7 @@ public:
     bool proto;
 public:
     FunctionEntry();
-    FunctionEntry(PrimitiveTypeNode* retType, std::vector<TypeNode*> paraTypes);
+    FunctionEntry(PrimitiveTypeNode* retType, std::vector<TypeNode*> paraTypes, bool proto_);
     PrimitiveTypeNode* getReturnType();
     std::vector<TypeNode*> getParameterTypes();
 };
@@ -55,6 +55,8 @@ public:
     T get(const std::string &name);
     
     void insert(const std::string& name, T ent);
+
+    std::map<std::string, T> gettable(){return table;}
 };
 
 } // namspace smallc

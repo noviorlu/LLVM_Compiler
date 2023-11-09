@@ -89,7 +89,8 @@ public:
     SymTable<FunctionEntry>* getFuncTable (); // Get the function table
     SymTable<VariableEntry>* getVarTable();   // Get the variable table
     bool hasVarTable() override; // Check if there is a variable symbol table
-    
+    void addDeclaration(DeclNode *decl);
+
     void visit(ASTVisitorBase* visitor) override;
 };
 
@@ -504,6 +505,7 @@ public:
     ScopeNode* getBody();
     PrimitiveTypeNode* getRetType();
     std::vector<ParameterNode*> getParams();
+    std::vector<TypeNode*> getParamTypes();
     unsigned int getNumParameters();
     PrimitiveTypeNode *getType() override;
     void visit(ASTVisitorBase* visitor) override;

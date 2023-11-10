@@ -399,6 +399,7 @@ public class smallCParser extends Parser {
 		enterRule(_localctx, 8, RULE_scalarDecl);
 
 		    ((ScalarDeclContext)_localctx).scalardecl =  new smallc::ScalarDeclNode();
+		    _localctx.scalardecl->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 
 		try {
 			enterOuterAlt(_localctx, 1);
@@ -530,6 +531,7 @@ public class smallCParser extends Parser {
 
 			        ((ArrDeclContext)_localctx).type =  new smallc::ArrayTypeNode(((ArrDeclContext)_localctx).varType.type, ((ArrDeclContext)_localctx).intConst.intconst->getVal());
 			        ((ArrDeclContext)_localctx).arrdecl =  new smallc::ArrayDeclNode(_localctx.type, ((ArrDeclContext)_localctx).arrName.name);
+			        _localctx.arrdecl->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 			    
 			}
 		}
@@ -571,6 +573,7 @@ public class smallCParser extends Parser {
 
 		    ((FcnProtoContext)_localctx).fcndeclaration =  new smallc::FunctionDeclNode();
 		    _localctx.fcndeclaration->setProto(true);
+		    _localctx.fcndeclaration->setLocation(_localctx->start->getLine(), _localctx->start->getCharPositionInLine());
 
 		try {
 			enterOuterAlt(_localctx, 1);

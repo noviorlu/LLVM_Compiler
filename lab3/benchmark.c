@@ -1,9 +1,14 @@
 int z;
 
+void func(){
+
+}
+
 int main() {
     int x;
     bool y;
-
+    func();
+    
     if (x) return -1;
     if (y) return 1;
     return 0;

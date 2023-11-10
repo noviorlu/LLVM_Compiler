@@ -61,8 +61,25 @@ int main(int argc, const char *argv[]) {
     // Invoke the parser and get the root of the AST, i.e., the ProgramNode
     ProgramNode* prg = parser->program()->prg;
 
+    
+    // ECE467 STUDENT: add code to create your semantic analyzer
+    // object and invoke it by by visiting the program node
+    // Once done, check if there are error messages and print them
+    SemanticAnalyzer* analyzer = new smallc::SemanticAnalyzer();
+    if (parser->getNumberOfSyntaxErrors() == 0) {
+        analyzer->visitProgramNode(prg);
+    }
+    else {
+        cout << "cannot analysis AST with parse errors\n";
+    }
+    if(!(analyzer->success())){
+        analyzer->printErrorMsgs();
+        return -1;
+    }
+    
+
     // Uncomment these lines to print the AST tree using the provided
-    // ASTPrinter class
+    // ASTPrinter class(Can only print after SymbolTable Creation)
     ASTPrinter *printer = new smallc::ASTPrinter();
     if (parser->getNumberOfSyntaxErrors() == 0) {
         printer->visitProgramNode(prg);
@@ -71,10 +88,6 @@ int main(int argc, const char *argv[]) {
         cout << "cannot print AST with parse errors\n";
     }
 
-    // ECE467 STUDENT: add code to create your semantic analyzer
-    // object and invoke it by by visiting the program node
-    // Once done, check if there are error messages and print them
-        
     return 0;
 }
 

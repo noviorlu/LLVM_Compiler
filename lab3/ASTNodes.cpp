@@ -59,7 +59,6 @@ ASTNode::getRoot () { return root; }
 void
 ASTNode::addChild (ASTNode* child) {
     children.push_back(child);
-    child->setParent(this);
 }
 
 void
@@ -142,36 +141,7 @@ ProgramNode::visit (ASTVisitorBase* visitor) {
 void 
 ProgramNode::addDeclaration(DeclNode *decl){
     decl->setParent(this);
-    addChild(decl);
-
-    ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
-    if(cast != nullptr){
-        venv->insert(cast->getIdent()->getName(), VariableEntry(cast->getType()));
-        return;
-    }
-
-    ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
-    if(cast1 != nullptr){
-        venv->insert(cast1->getIdent()->getName(), VariableEntry(cast1->getType()));
-        return;
-    }
-
-    FunctionDeclNode* cast2 = dynamic_cast<FunctionDeclNode *>(decl);
-    if(cast2 != nullptr){
-        fenv->insert(
-            cast2->getIdent()->getName(), 
-            FunctionEntry(
-                
-            )
-        );
-        return;
-    }
-    FunctionEntry(
-                cast2->getRetType(),
-                cast2->getParamTypes(),
-                cast2->getProto()
-            );
-    assert(false);
+    ASTNode::addChild(decl);
 }
 
 /**********************************************************************************/
@@ -932,19 +902,6 @@ void
 ScopeNode::addDeclaration(DeclNode *decl){
     decl->setParent(this);
     decls.push_back(decl);
-
-    ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
-    if(cast != nullptr){
-        env->insert(cast->getIdent()->getName(), VariableEntry(cast->getType()));
-        return;
-    }
-    ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
-    if(cast1 != nullptr){
-        env->insert(cast1->getIdent()->getName(), VariableEntry(cast1->getType()));
-        return;
-    }
-
-    assert(false);
 }
 std::vector<DeclNode*> 
 ScopeNode::getDeclarations(){

@@ -76,6 +76,7 @@ scalarDecl
 returns [smallc::ScalarDeclNode* scalardecl]
 @init {
     $scalardecl = new smallc::ScalarDeclNode();
+    $scalardecl->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
 }
 : 
     varType varName ';'
@@ -107,6 +108,7 @@ returns [smallc::ArrayDeclNode* arrdecl] locals[smallc::ArrayTypeNode * type]
     {
         $type = new smallc::ArrayTypeNode($varType.type, $intConst.intconst->getVal());
         $arrdecl = new smallc::ArrayDeclNode($type, $arrName.name);
+        $arrdecl->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
     }
 ;
 
@@ -115,6 +117,7 @@ returns [smallc::FunctionDeclNode * fcndeclaration]
 @init{
     $fcndeclaration = new smallc::FunctionDeclNode();
     $fcndeclaration->setProto(true);
+    $fcndeclaration->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
 }
 :
     retType fcnName '(' params ')' ';'

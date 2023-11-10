@@ -200,7 +200,7 @@ void ASTPrinter::visitIntExprNode(IntExprNode *intExpr) {
 }
 
 void ASTPrinter::visitReferenceExprNode(ReferenceExprNode *ref) {
-        ASTNode* curr = ref->getParent();
+    ASTNode* curr = ref->getParent();
     SymTable<VariableEntry>* table = nullptr;
     TypeNode::TypeEnum vartype = TypeNode::TypeEnum::Void;
     std::string name = ref->getIdent()->getName();

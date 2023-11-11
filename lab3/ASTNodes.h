@@ -58,7 +58,9 @@ public:
     ProgramNode* getRoot(); // Get the root program
     virtual bool hasVarTable(); // Does the node have a variable symbol table?
     FunctionDeclNode* getFunction (); // Get the function associated with the node, or nullptr
-    
+    virtual SymTable<VariableEntry>* getVarTable(int layer);
+    virtual SymTable<FunctionEntry>* getFuncTable();
+
     // Mutators
     void addChild(ASTNode* child); // Add a child
     void setParent(ASTNode* p);    // Set the parent
@@ -67,7 +69,6 @@ public:
     void setColumn(unsigned int column); // Set the column number of node in line
     void setLocation(unsigned int line, unsigned int column); // set location <line,column>
     void setLocation(std::pair<unsigned int, unsigned int> loc); // set location <line,column>
-
     // Visit the node using the visitor object
     // NOTE: this is an abstract class!
     virtual void visit(ASTVisitorBase* visitor) = 0;
@@ -86,8 +87,8 @@ public:
     ProgramNode();         // Constructor
     void setIo(bool flag); // Set the I/O flag
     bool useIo();          // Get the I/O flag
-    SymTable<FunctionEntry>* getFuncTable (); // Get the function table
-    SymTable<VariableEntry>* getVarTable();   // Get the variable table
+    SymTable<FunctionEntry>* getFuncTable () override; // Get the function table
+    SymTable<VariableEntry>* getVarTable(int layer) override;   // Get the variable table
     bool hasVarTable() override; // Check if there is a variable symbol table
     void addDeclaration(DeclNode *decl);
 
@@ -479,7 +480,7 @@ public:
     ScopeNode();
     void addDeclaration(DeclNode *decl);
     std::vector<DeclNode*> getDeclarations();
-    SymTable<VariableEntry>* getVarTable();
+    SymTable<VariableEntry>* getVarTable(int layer) override;
     bool hasVarTable() override;
     void visit(ASTVisitorBase* visitor) override;
 };

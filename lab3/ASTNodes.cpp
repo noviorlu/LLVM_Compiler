@@ -59,10 +59,11 @@ ASTNode::getRoot () { return root; }
 void
 ASTNode::addChild (ASTNode* child) {
     children.push_back(child);
+    child->setParent(this);
 }
 
 void
-ASTNode::setParent (ASTNode *p) { parent = p; }
+ASTNode::setParent (ASTNode *p) { assert(parent == nullptr); parent = p; }
 
 void
 ASTNode::setRoot (ProgramNode *r) { root = r; }
@@ -99,6 +100,15 @@ ASTNode::getFunction () {
     return nullptr;
 }
 
+SymTable<VariableEntry>* 
+ASTNode::getVarTable(int layer){
+    return ASTNode::getParent()->getVarTable(layer);
+}
+
+SymTable<FunctionEntry>* 
+ASTNode::getFuncTable(){
+    return ASTNode::getParent()->getFuncTable();
+}
 /**********************************************************************************/
 /* The ProgramNode Class                                                          */
 /**********************************************************************************/
@@ -124,7 +134,8 @@ ProgramNode::getFuncTable () {
 }
 
 SymTable<VariableEntry>*
-ProgramNode::getVarTable () {
+ProgramNode::getVarTable (int layer) {
+    if(layer != 0) return nullptr;
     return venv;
 }
 
@@ -140,7 +151,6 @@ ProgramNode::visit (ASTVisitorBase* visitor) {
 
 void 
 ProgramNode::addDeclaration(DeclNode *decl){
-    decl->setParent(this);
     ASTNode::addChild(decl);
 }
 
@@ -245,14 +255,14 @@ ArrayTypeNode::getSize(){
 }
 
 bool
-ArrayTypeNode::operator== (const ArrayTypeNode& t) {
+ArrayTypeNode::operator == (const ArrayTypeNode& t) {
     if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
         return true;
     return false;
 }
 
 bool
-ArrayTypeNode::operator!= (const ArrayTypeNode& t) {
+ArrayTypeNode::operator != (const ArrayTypeNode& t) {
     if(type->getTypeEnum() == t.type->getTypeEnum() && size == t.size) 
         return false;
     return true;
@@ -391,12 +401,14 @@ UnaryExprNode::UnaryExprNode(ExprNode *expr) : ExprNode(){
     operand = expr;
     operand->setParent(this);
     opcode = Unset;
+    ExprNode::setType(expr->getType());
 }
 
 UnaryExprNode::UnaryExprNode(ExprNode *expr, Opcode code) : ExprNode(){
     operand = expr;
     operand->setParent(this);
     opcode = code;
+    ExprNode::setType(expr->getType());
 }
 
 ExprNode* 
@@ -423,19 +435,9 @@ UnaryExprNode::setOpcode(Opcode code){
 
 void 
 UnaryExprNode::setOpcode(std::string code){
-    if(code == "+") opcode = Addition;
-    else if(code == "-") opcode = Subtraction;
-    else if(code == "*") opcode = Multiplication;
-    else if(code == "/") opcode = Division;
-    else if(code == "!") opcode = Not;
+    if(code == "!") opcode = Not;
     else if(code == "-") opcode = Minus;
-    else if(code == "&&") opcode = And;
-    else if(code == "||") opcode = NotEqual;
-    else if(code == "<") opcode = LessThan;
-    else if(code == "<=") opcode = LessorEqual;
-    else if(code == ">") opcode = Greater;
-    else if(code == ">=") opcode = GreaterorEqual;
-    else opcode = Unset;
+    else assert(false);
 }
 
 void 
@@ -448,17 +450,17 @@ UnaryExprNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-BinaryExprNode::BinaryExprNode(){
+BinaryExprNode::BinaryExprNode() : ExprNode(){
     left = nullptr;
     right = nullptr;
     opcode = Unset;
 }
 
-BinaryExprNode::BinaryExprNode(ExprNode *l, ExprNode *r){
+BinaryExprNode::BinaryExprNode(ExprNode *l, ExprNode *r) : ExprNode(){
     left = l;
     left->setParent(this);
     right = r;
-    left->setParent(this);
+    right->setParent(this);
     opcode = Unset;
 }
 
@@ -468,6 +470,12 @@ BinaryExprNode::BinaryExprNode(ExprNode *l, ExprNode *r, Opcode code){
     right = r;
     left->setParent(this);
     opcode = code;
+
+    assert(opcode == ExprNode::Opcode::Unset);
+    if(opcode <= ExprNode::Opcode::Division)
+        ExprNode::setTypeInt();
+    else if(opcode >= ExprNode::Opcode::And)
+        ExprNode::setTypeBool();
 }
 
 ExprNode* 
@@ -501,6 +509,11 @@ BinaryExprNode::getOpcode(){
 
 void 
 BinaryExprNode::setOpcode(Opcode code){
+    assert(opcode == ExprNode::Opcode::Unset);
+    if(code <= ExprNode::Opcode::Division)
+        ExprNode::setTypeInt();
+    else if(code >= ExprNode::Opcode::And)
+        ExprNode::setTypeBool();
     opcode = code;
 }
 
@@ -510,15 +523,20 @@ BinaryExprNode::setOpcode(std::string code){
     else if(code == "-") opcode = Subtraction;
     else if(code == "*") opcode = Multiplication;
     else if(code == "/") opcode = Division;
-    else if(code == "!") opcode = Not;
-    else if(code == "-") opcode = Minus;
     else if(code == "&&") opcode = And;
-    else if(code == "||") opcode = NotEqual;
+    else if(code == "||") opcode = Or;
+    else if(code == "==") opcode = Equal;
+    else if(code == "!=") opcode = NotEqual;
     else if(code == "<") opcode = LessThan;
     else if(code == "<=") opcode = LessorEqual;
     else if(code == ">") opcode = Greater;
     else if(code == ">=") opcode = GreaterorEqual;
-    else opcode = Unset;
+    else assert(false);
+
+    if(opcode <= Division)
+        ExprNode::setTypeInt();
+    else if(opcode >= And)
+        ExprNode::setTypeBool();
 }
 
 void 
@@ -534,11 +552,13 @@ BinaryExprNode::visit(ASTVisitorBase* visitor){
 
 BoolExprNode::BoolExprNode() : ExprNode(){
     value = nullptr;
+    ExprNode::setTypeBool();
 }
 
 BoolExprNode::BoolExprNode(ExprNode *val) : ExprNode(){
     value = val;
     value->setParent(this);
+    ExprNode::setTypeBool();
 }
 
 ExprNode* 
@@ -571,11 +591,13 @@ BoolExprNode::visit(ASTVisitorBase* visitor){
 
 IntExprNode::IntExprNode() : ExprNode(){
     value = nullptr;
+    ExprNode::setTypeInt();
 }
 
 IntExprNode::IntExprNode(ExprNode *val) : ExprNode(){
     value = val;
     value->setParent(this);
+    ExprNode::setTypeInt();
 }
 
 ExprNode* 
@@ -588,6 +610,7 @@ IntExprNode::setValue(ExprNode *val){
     if(value != nullptr) delete value;
     value = val;
     value->setParent(this);
+
 }
 
 ExprNode::Opcode 
@@ -608,15 +631,25 @@ IntExprNode::visit(ASTVisitorBase* visitor){
 
 ConstantExprNode::ConstantExprNode(const std::string &source_) : ExprNode(){
     source = source_;
-    val = 0;
+    ExprNode::setTypeBool();
+    if(source == "true") val = 1;
+    else if(source == "false") val = 0;
+    else {
+        val = std::atoi(source.c_str());
+        ExprNode::setTypeInt();
+    }
 }
 
 void 
 ConstantExprNode::setSource(const std::string &source_){
     source = source_;
+    ExprNode::setTypeBool();
     if(source == "true") val = 1;
     else if(source == "false") val = 0;
-    else val = std::atoi(source.c_str());
+    else {
+        val = std::atoi(source.c_str());
+        ExprNode::setTypeInt();
+    }
 }
 
 int 
@@ -630,7 +663,9 @@ ConstantExprNode::getVal(){
 
 // ECE467 STUDENT: implement the class
 
-BoolConstantNode::BoolConstantNode(const std::string &source) : ConstantExprNode(source){}
+BoolConstantNode::BoolConstantNode(const std::string &source) : ConstantExprNode(source){
+    ExprNode::setTypeBool();
+}
 void 
 BoolConstantNode::visit(ASTVisitorBase* visitor){
     visitor->visitBoolConstantNode(this);
@@ -641,7 +676,9 @@ BoolConstantNode::visit(ASTVisitorBase* visitor){
 /**********************************************************************************/
 
 // ECE467 STUDENT: implement the class
-IntConstantNode::IntConstantNode(const std::string &source) : ConstantExprNode(source){}
+IntConstantNode::IntConstantNode(const std::string &source) : ConstantExprNode(source){
+    ExprNode::setTypeInt();
+}
 void 
 IntConstantNode::visit(ASTVisitorBase* visitor){
     visitor->visitIntConstantNode(this);
@@ -908,7 +945,8 @@ ScopeNode::getDeclarations(){
     return decls;
 }
 SymTable<VariableEntry>* 
-ScopeNode::getVarTable(){
+ScopeNode::getVarTable(int layer){
+    if(layer != 0) return ASTNode::getParent()->getVarTable(--layer);
     return env;
 }
 bool 

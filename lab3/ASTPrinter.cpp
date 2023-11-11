@@ -12,7 +12,7 @@
 
 
 #include "ASTPrinter.h"
-
+#include <cassert>
 namespace smallc {
 
 ASTPrinter::ASTPrinter():indent(0), root(nullptr) { }
@@ -200,40 +200,28 @@ void ASTPrinter::visitIntExprNode(IntExprNode *intExpr) {
 }
 
 void ASTPrinter::visitReferenceExprNode(ReferenceExprNode *ref) {
-    ASTNode* curr = ref->getParent();
-    SymTable<VariableEntry>* table = nullptr;
+    SymTable<VariableEntry>* venv = nullptr;
     TypeNode::TypeEnum vartype = TypeNode::TypeEnum::Void;
     std::string name = ref->getIdent()->getName();
     
+    int i = 0;
     do{
-        curr = curr->getParent();
-        if(curr->hasVarTable()){
-            if(curr->getRoot()!=nullptr){
-                table = (static_cast<ProgramNode*>(curr))->getVarTable();
-
-                if(table->contains(name)){ 
-                    vartype = table->get(name).getType()->getTypeEnum();
-                }else std::cout << "Reach Root and didn't found variable!!!" << std::endl;
-                break;
-            }
-            else{
-                table = (static_cast<ScopeNode*>(curr))->getVarTable();
-
-                if(table->contains(name)){ 
-                    vartype = table->get(name).getType()->getTypeEnum();
-                    break;
-                }
-            }
+        venv = ref->getVarTable(i);
+        if(venv->contains(name)){
+            vartype = venv->get(name).getType()->getTypeEnum();
+            if(vartype == TypeNode::TypeEnum::Int)
+                std::cout << genPrefix() << "Int Expression" << genLocation(ref);
+            else if(vartype == TypeNode::TypeEnum::Bool)
+                std::cout << genPrefix() << "Bool Expression" << genLocation(ref);
+            else
+                std::cout << "Something Really Wrong!!!" << std::endl;
+            break;
         }
-    }while(true);
 
-    if(vartype == TypeNode::TypeEnum::Int)
-        std::cout << genPrefix() << "Int Expression" << genLocation(ref);
-    else if(vartype == TypeNode::TypeEnum::Bool)
-        std::cout << genPrefix() << "Bool Expression" << genLocation(ref);
-    else
-        std::cout << "Something Really Wrong!!!" << std::endl;
-    
+        i++;
+    }while(venv != nullptr);
+
+
     incrIndent();
     std::string res = genPrefix();
     res += "Reference";

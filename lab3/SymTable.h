@@ -49,14 +49,13 @@ template<class T>
 class SymTable {
 private:
     std::map<std::string, T> table;
+
 public:
     bool contains(const std::string &name);
     
     T get(const std::string &name);
     
     void insert(const std::string& name, T ent);
-
-    std::map<std::string, T> gettable(){return table;}
 };
 
 } // namspace smallc

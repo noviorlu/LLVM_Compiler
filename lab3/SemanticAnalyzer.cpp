@@ -87,9 +87,36 @@ void SemanticAnalyzer::visitArgumentNode(ArgumentNode *arg) {
 void SemanticAnalyzer::visitDeclNode(DeclNode *decl) {
     ASTVisitorBase::visitDeclNode(decl);
 }
-void SemanticAnalyzer::visitArrayDeclNode(ArrayDeclNode *array) {
+void SemanticAnalyzer::visitArrayDeclNode(ArrayDeclNode *array) {    
     array->getType()->visit(this);
     array->getIdent()->visit(this);
+    
+    SymTable<VariableEntry>* venv = array->getVarTable(0);
+    std::string name = array->getIdent()->getName();
+
+    // [Semantic 0]: sameName in SymbolTable
+    if(venv->contains(name)){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::IdentReDefined, 
+                std::pair<unsigned int, unsigned int>(array->getLine(), array->getCol()), 
+                name
+            )
+        );
+    }else{
+        // [Semantic 11]: ArraySize must be positive
+        if(array->getType()->getSize() < 0){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::InvalidArraySize, 
+                    std::pair<unsigned int, unsigned int>(array->getLine(), array->getCol()), 
+                    name
+                )
+            );
+        }
+        else venv->insert(name, VariableEntry(array->getType()));
+    }
+    
     ASTVisitorBase::visitArrayDeclNode(array);
 }
 void SemanticAnalyzer::visitFunctionDeclNode(FunctionDeclNode *func) {
@@ -99,11 +126,116 @@ void SemanticAnalyzer::visitFunctionDeclNode(FunctionDeclNode *func) {
         i->visit(this);
     if (func->getBody())
         func->getBody()->visit(this);
+    
+    SymTable<FunctionEntry>* fenv = func->getFuncTable();
+    std::string name = func->getIdent()->getName();
+
+    if(func->getProto()){
+        // [Semantic 3]: function with same name (no overloading)
+        if(fenv->contains(name)){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::InconsistentDef, 
+                    std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
+                    name
+                )
+            );
+        }
+        else
+            fenv->insert(
+                name, 
+                FunctionEntry(
+                    func->getRetType(),
+                    func->getParamTypes(),
+                    true
+                )
+            );
+    }
+    else{
+        // [Semantic 8]: function declaration must match protocol
+        bool isMatch = false;
+        if(fenv->contains(name)){
+            FunctionEntry fe = fenv->get(name);
+            
+            if(*(fe.getReturnType())==*(func->getRetType())){
+                std::vector<TypeNode*> fePT = fe.getParameterTypes();
+                std::vector<TypeNode*> funcPT = func->getParamTypes();
+                
+                if(fePT.size() == funcPT.size()){
+                    isMatch = true;
+                    
+                    for(int i = 0; i < fePT.size(); i++){
+                        if(fePT[i]->isArray() != funcPT[i]->isArray()){
+                            isMatch = false;
+                            break;
+                        }
+                        
+                        if(fePT[i]->isArray()){
+                            if(
+                                *(static_cast<ArrayTypeNode*>(fePT[i])) != 
+                                *(static_cast<ArrayTypeNode*>(funcPT[i]))
+                            ){
+                                isMatch = false;
+                                break;
+                            }
+                        }
+                        else{
+                            if(
+                                *(static_cast<PrimitiveTypeNode*>(fePT[i])) != 
+                                *(static_cast<PrimitiveTypeNode*>(funcPT[i]))
+                            ){
+                                isMatch = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        else {
+            fenv->insert(
+                name, 
+                FunctionEntry(
+                    func->getRetType(),
+                    func->getParamTypes(),
+                    false
+                )
+            );
+            isMatch = true;
+        }
+
+        if(!isMatch)
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::InconsistentDef, 
+                    std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
+                    name
+                )
+            );
+    }
+
     ASTVisitorBase::visitFunctionDeclNode(func);
 }
 void SemanticAnalyzer::visitScalarDeclNode(ScalarDeclNode *scalar) {
     scalar->getType()->visit(this);
     scalar->getIdent()->visit(this);
+    
+    SymTable<VariableEntry>* venv = scalar->getVarTable(0);
+    std::string name = scalar->getIdent()->getName();
+    
+    // [Semantic 0]: sameName in SymbolTable
+    if(venv->contains(name)){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::IdentReDefined, 
+                std::pair<unsigned int, unsigned int>(scalar->getLine(), scalar->getCol()), 
+                name
+            )
+        );
+    }else{
+        venv->insert(name, VariableEntry(scalar->getType()));
+    }
+
     ASTVisitorBase::visitScalarDeclNode(scalar);
 }
 void SemanticAnalyzer::visitExprNode(ExprNode *exp) {
@@ -112,6 +244,44 @@ void SemanticAnalyzer::visitExprNode(ExprNode *exp) {
 void SemanticAnalyzer::visitBinaryExprNode(BinaryExprNode *bin) {
     bin->getLeft()->visit(this);
     bin->getRight()->visit(this);
+
+    // [Semantic 4]: arithmetic operators must be int
+    ExprNode::Opcode op = bin->getOpcode();
+
+    assert(op != ExprNode::Opcode::Unset);
+    if(op <= ExprNode::Opcode::Division){
+        if(bin->getLeft()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::TypeMisMatch, 
+                    std::pair<unsigned int, unsigned int>(bin->getLine(), bin->getCol())
+                )
+            );
+        }
+        if(bin->getRight()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::TypeMisMatch, 
+                    std::pair<unsigned int, unsigned int>(bin->getLine(), bin->getCol())
+                )
+            );
+        }
+    }
+    // [Semantic 5]: logical operators must same type
+    else if(op >= ExprNode::Opcode::And){
+        if(
+            *(bin->getLeft()->getType()) != 
+            *(bin->getRight()->getType())
+        ){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::TypeMisMatch, 
+                    std::pair<unsigned int, unsigned int>(bin->getLine(), bin->getCol())
+                )
+            );
+        }
+    }
+
     ASTVisitorBase::visitBinaryExprNode(bin);
 }
 void SemanticAnalyzer::visitBoolExprNode(BoolExprNode *boolExpr) {
@@ -122,7 +292,42 @@ void SemanticAnalyzer::visitCallExprNode(CallExprNode *call) {
     call->getIdent()->visit(this);
     for (auto i: call->getArguments())
         i->visit(this);
+
+    //[Semantic 10]: check Caller arg is same as declaration?
+    std::vector<ArgumentNode*> arglist = call->getArguments();
+    std::vector<TypeNode*> typelist;
+    std::string name = call->getIdent()->getName();
+
+    if(!call->getFuncTable()->contains(name)){
+        goto Error;
+    }
+    typelist = call->getFuncTable()->get(name).getParameterTypes();
+    
+    if(arglist.size() != typelist.size()){
+        goto Error;
+    }
+    
+    for(int i = 0; i < arglist.size(); i++){
+        //BIG PROBLEM HERE!!!!!!!!!!!
+        PrimitiveTypeNode* cast = dynamic_cast<PrimitiveTypeNode*>(typelist[i]);
+        if(cast == nullptr || *(arglist[i]->getExpr()->getType()) != *(cast)){
+            goto Error;
+        }
+    }
+
     ASTVisitorBase::visitCallExprNode(call);
+    return;
+
+Error:
+    SemanticAnalyzer::addError(
+        SemaError(
+            SemaError::ErrorEnum::IdentUnDefined, 
+            std::pair<unsigned int, unsigned int>(call->getLine(), call->getCol()),
+            name
+        )
+    );
+    ASTVisitorBase::visitCallExprNode(call);
+    return;
 }
 void SemanticAnalyzer::visitConstantExprNode(ConstantExprNode *constant) {
     ASTVisitorBase::visitConstantExprNode(constant);
@@ -141,6 +346,54 @@ void SemanticAnalyzer::visitReferenceExprNode(ReferenceExprNode *ref) {
     ref->getIdent()->visit(this);
     if (ref->getIndex())
         ref->getIndex()->visit(this);
+
+    SymTable<VariableEntry>* venv = ref->getVarTable(0);
+    TypeNode::TypeEnum vartype = TypeNode::TypeEnum::Void;
+    std::string name = ref->getIdent()->getName();
+    ref->setTypeVoid();
+    
+    int i = 1;
+    do{
+        if(venv->contains(name)){
+            vartype = venv->get(name).getType()->getTypeEnum();
+            if(vartype == TypeNode::TypeEnum::Int)
+                ref->setTypeInt();
+            else if(vartype == TypeNode::TypeEnum::Bool)
+                ref->setTypeBool();
+            else assert(false);
+            
+            //[Semantic 12]: Array not use at Var, via
+            if(
+                (venv->get(name).getType()->isArray() && ref->getIndex() == nullptr) ||
+                (!venv->get(name).getType()->isArray() && ref->getIndex() != nullptr)
+            ){
+                SemanticAnalyzer::addError(
+                    SemaError(
+                        SemaError::ErrorEnum::InvalidAccess, 
+                        std::pair<unsigned int, unsigned int>(ref->getLine(), ref->getCol()), 
+                        name
+                    )
+                );
+                ref->setTypeVoid();
+            }
+            break;
+        }
+        venv = ref->getVarTable(i);
+        i++;
+    }while(venv != nullptr);
+    
+    //[Semantic 1]: reference not defined in scope
+    if(venv == nullptr){
+
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::IdentUnDefined, 
+                std::pair<unsigned int, unsigned int>(ref->getLine(), ref->getCol()), 
+                name
+            )
+        );
+    }
+
     ASTVisitorBase::visitReferenceExprNode(ref);
 }
 void SemanticAnalyzer::visitUnaryExprNode(UnaryExprNode *unary) {
@@ -156,60 +409,41 @@ void SemanticAnalyzer::visitParameterNode(ParameterNode *param) {
     ASTVisitorBase::visitParameterNode(param);
 }
 void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
-    /*SymbolTable Creation - BEGIN*/ 
-    DeclNode *decl = nullptr;
-    SymTable<VariableEntry>* venv = prg->getVarTable();
     SymTable<FunctionEntry>* fenv = prg->getFuncTable();
-
-    int i = prg->getNumChildren() - 1;
-    for(; i>=0; i--){
-        decl = dynamic_cast<DeclNode *>(prg->getChild(i));
-        if(decl == nullptr) assert(false);
-
-        std::pair<unsigned int, unsigned int> loc(decl->getLine(), decl->getCol());
-        std::string name = decl->getIdent()->getName();
-        
-        ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
-        if(cast != nullptr){
-            if(venv->contains(name)){
-                // [Error 0]: sameName in SymbolTable
-                SemanticAnalyzer::addError(SemaError(SemaError::ErrorEnum::IdentReDefined, loc, name));
-                continue;
-            }
-            
-            venv->insert(name, VariableEntry(cast->getType()));
-            continue;
-        }
-
-        ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
-        if(cast1 != nullptr){
-            if(venv->contains(name)){
-                // [Error 0]: sameName in SymbolTable
-                SemanticAnalyzer::addError(SemaError(SemaError::ErrorEnum::IdentReDefined, loc, name));
-                continue;
-            }
-            
-            venv->insert(name, VariableEntry(cast1->getType()));
-            continue;
-        }
-
-        FunctionDeclNode* cast2 = dynamic_cast<FunctionDeclNode *>(decl);
-        if(cast2 != nullptr){
-            fenv->insert(
-                cast2->getIdent()->getName(), 
-                FunctionEntry(
-                    cast2->getRetType(),
-                    cast2->getParamTypes(),
-                    cast2->getProto()
-                )
-            );
-            continue;
-        }
-        
-        assert(false);
+    if(prg->useIo()){
+        fenv->insert(
+            "readBool", 
+            FunctionEntry(
+                new PrimitiveTypeNode(TypeNode::TypeEnum::Bool),
+                {},
+                false
+            )
+        );
+        fenv->insert(
+            "readInt", 
+            FunctionEntry(
+                new PrimitiveTypeNode(TypeNode::TypeEnum::Int),
+                {},
+                false
+            )
+        );
+        fenv->insert(
+            "writeBool", 
+            FunctionEntry(
+                new PrimitiveTypeNode(TypeNode::TypeEnum::Void),
+                {new PrimitiveTypeNode(TypeNode::TypeEnum::Bool)},
+                false
+            )
+        );
+        fenv->insert(
+            "writeInt", 
+            FunctionEntry(
+                new PrimitiveTypeNode(TypeNode::TypeEnum::Int),
+                {new PrimitiveTypeNode(TypeNode::TypeEnum::Int)},
+                false
+            )
+        );
     }
-    /*SymbolTable Creation - END*/ 
-
     ASTVisitorBase::visitProgramNode(prg);
 }
 void SemanticAnalyzer::visitStmtNode(StmtNode *stmt) {
@@ -218,6 +452,35 @@ void SemanticAnalyzer::visitStmtNode(StmtNode *stmt) {
 void SemanticAnalyzer::visitAssignStmtNode(AssignStmtNode *assign) {
     assign->getTarget()->visit(this);
     assign->getValue()->visit(this);
+
+    
+    // [Semantic 6]: same type on left and right
+    ReferenceExprNode *target = assign->getTarget();
+    ExprNode* val = assign->getValue();
+
+    if(
+        target->getType()->getTypeEnum() == TypeNode::TypeEnum::Void ||
+        val->getType()->getTypeEnum() == TypeNode::TypeEnum::Void
+    ){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::TypeMisMatch, 
+                std::pair<unsigned int, unsigned int>(assign->getLine(), assign->getCol())
+            )
+        );
+    }
+    else {
+        if(
+            *(target->getType()) != *(val->getType())
+        ){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::TypeMisMatch, 
+                    std::pair<unsigned int, unsigned int>(assign->getLine(), assign->getCol())
+                )
+            );
+        }
+    }
     ASTVisitorBase::visitAssignStmtNode(assign);
 }
 void SemanticAnalyzer::visitExprStmtNode(ExprStmtNode *expr) {
@@ -229,50 +492,48 @@ void SemanticAnalyzer::visitIfStmtNode(IfStmtNode *ifStmt) {
     ifStmt->getThen()->visit(this);
     if (ifStmt->getHasElse())
         ifStmt->getElse()->visit(this);
+
+    // [Semantic 7]:ifStatemnt condition must be bool
+    if(ifStmt->getCondition()->getType()->getTypeEnum() != TypeNode::TypeEnum::Bool){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::InvalidCond, 
+                std::pair<unsigned int, unsigned int>(ifStmt->getLine(), ifStmt->getCol()),
+                "if statement"
+            )
+        );
+    }
     ASTVisitorBase::visitIfStmtNode(ifStmt);
 }
 void SemanticAnalyzer::visitReturnStmtNode(ReturnStmtNode *ret) {
     if (!ret->returnVoid())
         ret->getReturn()->visit(this);
+
+    //[Semantic 9]: return type match funcDecl
+    if(ret->getFunction()->getRetType()->getTypeEnum() == TypeNode::TypeEnum::Void){
+        if(ret->getReturn() != nullptr){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::MisMatchedReturn, 
+                    std::pair<unsigned int, unsigned int>(ret->getLine(), ret->getCol())
+                )
+            );
+        }
+    }
+    else{
+        if(*(ret->getFunction()->getRetType()) != *(ret->getReturn()->getType())){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::MisMatchedReturn, 
+                    std::pair<unsigned int, unsigned int>(ret->getLine(), ret->getCol())
+                )
+            );
+        }
+    }
+    
     ASTVisitorBase::visitReturnStmtNode(ret);
 }
 void SemanticAnalyzer::visitScopeNode(ScopeNode *scope) {
-    /*SymbolTable Creation - BEGIN*/ 
-    DeclNode *decl = nullptr;
-    SymTable<VariableEntry>* venv = scope->getVarTable();
-
-    for(auto decl: scope->getDeclarations()){
-        std::pair<unsigned int, unsigned int> loc(decl->getLine(), decl->getCol());
-        std::string name = decl->getIdent()->getName();
-        
-        ScalarDeclNode * cast = dynamic_cast<ScalarDeclNode *>(decl);
-        if(cast != nullptr){
-            if(venv->contains(name)){
-                // [Error 0]: sameName in SymbolTable
-                SemanticAnalyzer::addError(SemaError(SemaError::ErrorEnum::IdentReDefined, loc, name));
-                continue;
-            }
-            
-            venv->insert(name, VariableEntry(cast->getType()));
-            continue;
-        }
-
-        ArrayDeclNode * cast1 = dynamic_cast<ArrayDeclNode *>(decl);
-        if(cast1 != nullptr){
-            if(venv->contains(name)){
-                // [Error 0]: sameName in SymbolTable
-                SemanticAnalyzer::addError(SemaError(SemaError::ErrorEnum::IdentReDefined, loc, name));
-                continue;
-            }
-            
-            venv->insert(name, VariableEntry(cast1->getType()));
-            continue;
-        }
-        
-        assert(false);
-    }
-    /*SymbolTable Creation - END*/ 
-    
     for (auto i: scope->getDeclarations())
         i->visit(this);
     
@@ -281,6 +542,17 @@ void SemanticAnalyzer::visitScopeNode(ScopeNode *scope) {
 void SemanticAnalyzer::visitWhileStmtNode(WhileStmtNode *whileStmt) {
     whileStmt->getCondition()->visit(this);
     whileStmt->getBody()->visit(this);
+
+    // [Semantic 7]:w hileStatemnt condition must be bool
+    if(whileStmt->getCondition()->getType()->getTypeEnum() != TypeNode::TypeEnum::Bool){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::InvalidCond, 
+                std::pair<unsigned int, unsigned int>(whileStmt->getLine(), whileStmt->getCol()),
+                "while statement"
+            )
+        );
+    }
     ASTVisitorBase::visitWhileStmtNode(whileStmt);
 }
 void SemanticAnalyzer::visitTypeNode(TypeNode *type) {

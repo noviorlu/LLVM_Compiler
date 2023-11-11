@@ -39,13 +39,15 @@ returns [std::vector<smallc::DeclNode *> declarations]
 :
     scalarDeclList 
     {
-        for(smallc::DeclNode * scalardecl : $scalarDeclList.scalardecls)
+        for(smallc::DeclNode * scalardecl : $scalarDeclList.scalardecls){
             $declarations.push_back(scalardecl);
+        }
     }
     | arrDeclList
     {
-        for(smallc::DeclNode * arrdecl : $arrDeclList.arrdecls)
+        for(smallc::DeclNode * arrdecl : $arrDeclList.arrdecls){
             $declarations.push_back(arrdecl);
+        }
     }
     | fcnProto
     {
@@ -181,13 +183,11 @@ returns[smallc::ExprNode* expression]
 :
     boolConst
     {
-        $expression = new smallc::BoolExprNode($boolConst.boolconst);
-        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+        $expression = $boolConst.boolconst;
     }
     | intConst
     {
-        $expression = new smallc::IntExprNode($intConst.intconst);
-        $expression->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+        $expression = $intConst.intconst;
     }
 ;
 
@@ -211,7 +211,6 @@ returns[smallc::ScopeNode* scope_]
     '{' (scalarDecl
     {
         $scope_->addDeclaration($scalarDecl.scalardecl);
-
     }
     |arrDecl
     {
@@ -228,6 +227,10 @@ stmt
 returns [smallc::StmtNode* statement]
 :
     expr ';'
+    {
+        $statement = new smallc::ExprStmtNode($expr.expression);
+        $statement->setLocation($ctx->start->getLine(), $ctx->start->getCharPositionInLine());
+    }
     | assignStmt
     {
         $statement = $assignStmt.assignstatement;

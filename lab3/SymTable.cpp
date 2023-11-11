@@ -70,7 +70,6 @@ FunctionEntry::getReturnType(){
 
 std::vector<TypeNode*> 
 FunctionEntry::getParameterTypes(){
-    assert(parameterTypes.size() != 0);
     return parameterTypes;
 }
 
@@ -98,7 +97,6 @@ SymTable<T>::insert(const std::string& name, T ent){
     assert(!SymTable::contains(name));
     table[name] = ent;
 }
-
 
 // Explicit template class instantiation
 template class SymTable<FunctionEntry>;

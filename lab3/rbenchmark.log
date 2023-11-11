@@ -1,0 +1,20 @@
+sema: 3:0 : redefinition of x
+sema: 10:4 : redefinition of w
+sema: 13:4 : redefinition of a
+sema: 21:4 : size cannot be negative for array b
+sema: 23:4 : use of undefined identifier ab
+sema: 24:8 : use of undefined identifier c
+sema: 24:4 : type mismatch 
+sema: 26:4 : no matching definition for fcn2
+sema: 29:4 : type mismatch 
+sema: 30:4 : type mismatch 
+sema: 33:4 : type mismatch 
+sema: 36:4 : no matching definition for helper1
+sema: 37:4 : no matching definition for helper2
+sema: 39:4 : invalid condition in if statement
+sema: 41:4 : invalid condition in while statement
+sema: 43:4 : invalid condition in while statement
+sema: 44:4 : invalid condition in while statement
+sema: 46:8 : invalid use of identifier a
+sema: 47:8 : invalid use of identifier k
+sema: 49:4 : no matching definition for main

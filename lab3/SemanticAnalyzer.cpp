@@ -126,96 +126,84 @@ void SemanticAnalyzer::visitFunctionDeclNode(FunctionDeclNode *func) {
         i->visit(this);
     if (func->getBody())
         func->getBody()->visit(this);
-    
+
     SymTable<FunctionEntry>* fenv = func->getFuncTable();
     std::string name = func->getIdent()->getName();
 
-    if(func->getProto()){
-        // [Semantic 3]: function with same name (no overloading)
-        if(fenv->contains(name)){
-            SemanticAnalyzer::addError(
-                SemaError(
-                    SemaError::ErrorEnum::InconsistentDef, 
-                    std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
-                    name
-                )
-            );
-        }
-        else
-            fenv->insert(
-                name, 
-                FunctionEntry(
-                    func->getRetType(),
-                    func->getParamTypes(),
-                    true
-                )
-            );
-    }
-    else{
-        // [Semantic 8]: function declaration must match protocol
-        bool isMatch = false;
-        if(fenv->contains(name)){
+    if(fenv->contains(name)){
+        if(fenv->get(name).getProto()){
+            if(func->getProto()) goto InconsistentDefError;
+
             FunctionEntry fe = fenv->get(name);
             
-            if(*(fe.getReturnType())==*(func->getRetType())){
-                std::vector<TypeNode*> fePT = fe.getParameterTypes();
-                std::vector<TypeNode*> funcPT = func->getParamTypes();
+            if(*(fe.getReturnType())!=*(func->getRetType()))
+                goto InconsistentDefError;
+            
+            std::vector<TypeNode*> fePT = fe.getParameterTypes();
+            std::vector<TypeNode*> funcPT = func->getParamTypes();
+
+            if(fePT.size() != funcPT.size())
+                goto InconsistentDefError;
+
+            for(int i = 0; i < fePT.size(); i++){
+                if(fePT[i]->isArray() != funcPT[i]->isArray())
+                    goto InconsistentDefError;
                 
-                if(fePT.size() == funcPT.size()){
-                    isMatch = true;
+                if(fePT[i]->isArray()){
+                    if(
+                        *(static_cast<ArrayTypeNode*>(fePT[i])) != 
+                        *(static_cast<ArrayTypeNode*>(funcPT[i]))
+                    ) goto InconsistentDefError;
+                }
+                else{
+                    if(
+                        *(static_cast<PrimitiveTypeNode*>(fePT[i])) != 
+                        *(static_cast<PrimitiveTypeNode*>(funcPT[i]))
+                    ) goto InconsistentDefError;
                     
-                    for(int i = 0; i < fePT.size(); i++){
-                        if(fePT[i]->isArray() != funcPT[i]->isArray()){
-                            isMatch = false;
-                            break;
-                        }
-                        
-                        if(fePT[i]->isArray()){
-                            if(
-                                *(static_cast<ArrayTypeNode*>(fePT[i])) != 
-                                *(static_cast<ArrayTypeNode*>(funcPT[i]))
-                            ){
-                                isMatch = false;
-                                break;
-                            }
-                        }
-                        else{
-                            if(
-                                *(static_cast<PrimitiveTypeNode*>(fePT[i])) != 
-                                *(static_cast<PrimitiveTypeNode*>(funcPT[i]))
-                            ){
-                                isMatch = false;
-                                break;
-                            }
-                        }
-                    }
                 }
             }
+            
+            goto End;
         }
-        else {
-            fenv->insert(
-                name, 
-                FunctionEntry(
-                    func->getRetType(),
-                    func->getParamTypes(),
-                    false
-                )
-            );
-            isMatch = true;
-        }
-
-        if(!isMatch)
-            SemanticAnalyzer::addError(
-                SemaError(
-                    SemaError::ErrorEnum::InconsistentDef, 
-                    std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
-                    name
-                )
-            );
+        else { goto IdentReDefinedError;}
     }
+    fenv->insert(
+        name, 
+        FunctionEntry(
+            func->getRetType(),
+            func->getParamTypes(),
+            func->getProto()
+        )
+    );
 
+End:
     ASTVisitorBase::visitFunctionDeclNode(func);
+    return;
+
+InconsistentDefError:
+    SemanticAnalyzer::addError(
+        SemaError(
+            SemaError::ErrorEnum::InconsistentDef, 
+            std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
+            name
+        )
+    );
+    ASTVisitorBase::visitFunctionDeclNode(func);
+    return;
+
+IdentReDefinedError:
+    SemanticAnalyzer::addError(
+        SemaError(
+            SemaError::ErrorEnum::IdentReDefined, 
+            std::pair<unsigned int, unsigned int>(func->getLine(), func->getCol()), 
+            name
+        )
+    );
+    ASTVisitorBase::visitFunctionDeclNode(func);
+    return;
 }
+
 void SemanticAnalyzer::visitScalarDeclNode(ScalarDeclNode *scalar) {
     scalar->getType()->visit(this);
     scalar->getIdent()->visit(this);
@@ -250,15 +238,10 @@ void SemanticAnalyzer::visitBinaryExprNode(BinaryExprNode *bin) {
 
     assert(op != ExprNode::Opcode::Unset);
     if(op <= ExprNode::Opcode::Division){
-        if(bin->getLeft()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int){
-            SemanticAnalyzer::addError(
-                SemaError(
-                    SemaError::ErrorEnum::TypeMisMatch, 
-                    std::pair<unsigned int, unsigned int>(bin->getLine(), bin->getCol())
-                )
-            );
-        }
-        if(bin->getRight()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int){
+        if(
+            bin->getLeft()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int ||
+            bin->getRight()->getType()->getTypeEnum() != TypeNode::TypeEnum::Int
+        ){
             SemanticAnalyzer::addError(
                 SemaError(
                     SemaError::ErrorEnum::TypeMisMatch, 
@@ -267,8 +250,22 @@ void SemanticAnalyzer::visitBinaryExprNode(BinaryExprNode *bin) {
             );
         }
     }
+    else if(op == ExprNode::Opcode::And || op == ExprNode::Opcode::Or){
+        if(
+            bin->getLeft()->getType()->getTypeEnum() != TypeNode::TypeEnum::Bool || 
+            bin->getRight()->getType()->getTypeEnum() != TypeNode::TypeEnum::Bool 
+        ){
+            SemanticAnalyzer::addError(
+                SemaError(
+                    SemaError::ErrorEnum::TypeMisMatch, 
+                    std::pair<unsigned int, unsigned int>(bin->getLine(), bin->getCol())
+                )
+            );
+            bin->setTypeVoid();
+        }
+    }
     // [Semantic 5]: logical operators must same type
-    else if(op >= ExprNode::Opcode::And){
+    else if(op >= ExprNode::Opcode::Equal){
         if(
             *(bin->getLeft()->getType()) != 
             *(bin->getRight()->getType())
@@ -406,6 +403,30 @@ void SemanticAnalyzer::visitIdentifierNode(IdentifierNode *id) {
 void SemanticAnalyzer::visitParameterNode(ParameterNode *param) {
     param->getType()->visit(this);
     param->getIdent()->visit(this);
+
+    SymTable<VariableEntry>* venv = param->getVarTable(0);
+    std::string name = param->getIdent()->getName();
+    
+    FunctionDeclNode* parent = dynamic_cast<FunctionDeclNode*>(param->getParent());
+    if(parent->getProto()) goto End;
+
+    // [Semantic 0]: sameName in SymbolTable
+    if(venv->contains(name)){
+        SemanticAnalyzer::addError(
+            SemaError(
+                SemaError::ErrorEnum::IdentReDefined, 
+                std::pair<unsigned int, unsigned int>(param->getLine(), param->getCol()), 
+                name
+            )
+        );
+    }else{
+        if(param->getType()->isArray())
+            venv->insert(name, VariableEntry(static_cast<ArrayTypeNode*>(param->getType())));
+        else
+            venv->insert(name, VariableEntry(static_cast<PrimitiveTypeNode*>(param->getType())));
+    }
+
+End:
     ASTVisitorBase::visitParameterNode(param);
 }
 void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
@@ -416,7 +437,7 @@ void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
             FunctionEntry(
                 new PrimitiveTypeNode(TypeNode::TypeEnum::Bool),
                 {},
-                false
+                true
             )
         );
         fenv->insert(
@@ -424,7 +445,7 @@ void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
             FunctionEntry(
                 new PrimitiveTypeNode(TypeNode::TypeEnum::Int),
                 {},
-                false
+                true
             )
         );
         fenv->insert(
@@ -432,15 +453,15 @@ void SemanticAnalyzer::visitProgramNode(ProgramNode *prg) {
             FunctionEntry(
                 new PrimitiveTypeNode(TypeNode::TypeEnum::Void),
                 {new PrimitiveTypeNode(TypeNode::TypeEnum::Bool)},
-                false
+                true
             )
         );
         fenv->insert(
             "writeInt", 
             FunctionEntry(
-                new PrimitiveTypeNode(TypeNode::TypeEnum::Int),
+                new PrimitiveTypeNode(TypeNode::TypeEnum::Void),
                 {new PrimitiveTypeNode(TypeNode::TypeEnum::Int)},
-                false
+                true
             )
         );
     }

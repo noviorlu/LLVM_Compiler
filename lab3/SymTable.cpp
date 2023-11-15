@@ -73,6 +73,10 @@ FunctionEntry::getParameterTypes(){
     return parameterTypes;
 }
 
+bool
+FunctionEntry::getProto(){
+    return proto;
+}
 /**********************************************************************************/
 /* The SymTable Class                                                              */
 /**********************************************************************************/

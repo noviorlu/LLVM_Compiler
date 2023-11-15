@@ -196,12 +196,12 @@ PrimitiveTypeNode::getTypeEnum() const {
 
 bool
 PrimitiveTypeNode::operator == (const PrimitiveTypeNode& t) {
-    return type == t.type;
+    return (type == t.type);
 }
 
 bool
 PrimitiveTypeNode::operator != (const PrimitiveTypeNode& t) {
-    return type != t.type;
+    return (type != t.type);
 }
 
 void

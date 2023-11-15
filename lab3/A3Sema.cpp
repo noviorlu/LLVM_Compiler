@@ -80,13 +80,13 @@ int main(int argc, const char *argv[]) {
 
     // Uncomment these lines to print the AST tree using the provided
     // ASTPrinter class(Can only print after SymbolTable Creation)
-    ASTPrinter *printer = new smallc::ASTPrinter();
-    if (parser->getNumberOfSyntaxErrors() == 0) {
-        printer->visitProgramNode(prg);
-    }
-    else {
-        cout << "cannot print AST with parse errors\n";
-    }
+    // ASTPrinter *printer = new smallc::ASTPrinter();
+    // if (parser->getNumberOfSyntaxErrors() == 0) {
+    //     printer->visitProgramNode(prg);
+    // }
+    // else {
+    //     cout << "cannot print AST with parse errors\n";
+    // }
 
     return 0;
 }

@@ -1,8 +1,8 @@
 //
 //  SymTable.h
-//  ECE467 Lab 3
+//  ECE467 Lab 4
 //
-//  Created by Tarek Abdelrahman on 2023-09-13.
+//  Created by Tarek Abdelrahman on 2023-10-13.
 //  Based on code written by Ao (Dino) Li for ECE467.
 //  Copyright © 2023 Tarek Abdelrahman. All rights reserved.
 //
@@ -16,19 +16,41 @@
 #include "ASTNodes.h"
 #include <map>
 #include <string>
+#include "llvm/IR/Value.h"
 
 namespace smallc {
+
+// Symbol table class
+template<class T>
+class SymTable {
+private:
+    std::map<std::string, T> table;
+public:
+    bool contains(const std::string &name);
+    
+    T get(const std::string &name);
+    
+    void insert(const std::string& name, T ent);
+    
+    void setLLVMValue(std::string name, llvm::Value* val);
+    
+    std::map<std::string, T>* getTable(); // Bad, it returns a pointer to the table
+};
 
 // A variable entry in the table
 class VariableEntry {
 private:
     TypeNode* type;
     bool isArray;
+    llvm::Value* value;
+    
 public:
     VariableEntry();
     explicit VariableEntry(PrimitiveTypeNode* p);
     explicit VariableEntry(ArrayTypeNode* arr);
     TypeNode* getType();
+    llvm::Value* getValue();
+    friend class SymTable<VariableEntry>;
 };
 
 // A function entry in the table
@@ -36,27 +58,14 @@ class FunctionEntry {
 public:
     PrimitiveTypeNode* returnType;
     std::vector<TypeNode*> parameterTypes;
+    llvm::Value* value; // Not used here but simplifies table
     bool proto;
 public:
     FunctionEntry();
-    FunctionEntry(PrimitiveTypeNode* retType, std::vector<TypeNode*> paraTypes, bool proto_);
+    FunctionEntry(PrimitiveTypeNode* retType, std::vector<TypeNode*> paraTypes);
     PrimitiveTypeNode* getReturnType();
     std::vector<TypeNode*> getParameterTypes();
-    bool getProto();
-};
-
-// Symbol table class
-template<class T>
-class SymTable {
-private:
-    std::map<std::string, T> table;
-
-public:
-    bool contains(const std::string &name);
-    
-    T get(const std::string &name);
-    
-    void insert(const std::string& name, T ent);
+    friend class SymTable<FunctionEntry>;
 };
 
 } // namspace smallc

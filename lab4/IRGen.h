@@ -42,7 +42,7 @@ public:
     // Utility methods
     unique_ptr<llvm::Module> getModule();
     llvm::Type* convertType(TypeNode* type);
-    SymTable<VariableEntry>* findTable(IdentifierNode* id);
+    SymTable<VariableEntry>* findTable(IdentifierNode* id, bool& isRoot);
 
     // The IR Generation visitors
     // These are the methods that perform the IR code generation 

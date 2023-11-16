@@ -2,7 +2,8 @@
 void main() {
     int a;
     int b;
-
+    bool c;
+    
     a + b;
     a - b;
     a * b;
@@ -15,4 +16,6 @@ void main() {
     a <= b;
     a > b;
     a >= b;
+    -a;
+    !c;
 }

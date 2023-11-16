@@ -1,7 +1,21 @@
 #include "scio.h"
 void main() {
     int a;
-    bool b;
+    int b;
+    bool c;
+    
+    a + b;
+    a - b;
+    a * b;
+    a / b;
+    a && b;
+    a || b;
+    a == b;
+    a != b;
+    a < b;
+    a <= b;
+    a > b;
+    a >= b;
     -a;
-    !b;
+    !c;
 }

@@ -1,4 +1,5 @@
 /lab4/smallC*
+/lab4/.antlr/*
 /lab4/*.o
 /lab4/*.bc
 /lab4/*.bak

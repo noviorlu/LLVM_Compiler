@@ -1,3 +1,7 @@
+# rm ./benchmark.bc
+# rm ./benchmark.ll
+# rm ./benchmark-ref.bc
+# rm ./benchmark-ref.ll
 ./A4Gen ./benchmark.sc
 # /cad2/ece467f/llvm-project/build/bin/clang benchmark.bc libscio.a -o benchmark
 /cad2/ece467f/llvm-project/build/bin/llvm-dis ./benchmark.bc

@@ -51,11 +51,11 @@ IRGen::convertType(TypeNode* type){
     }
     if(type->isArray()){
         ArrayTypeNode* arrType = (ArrayTypeNode*) type;
+	if(arrType->getSize() == 0) return llvm::PointerType::get(base, 0);
         return llvm::ArrayType::get(base, arrType->getSize());
     }
     return base;
 }
-
 SymTable<VariableEntry>*
 IRGen::findTable(IdentifierNode* id, bool& isRoot){
     isRoot = false;
@@ -72,8 +72,29 @@ IRGen::findTable(IdentifierNode* id, bool& isRoot){
                 res = id->getRoot()->getVarTable();
                 isRoot = true;
             }
-            if (res && res->contains(id->getName()))
+            if (res && res->contains(id->getName())){
                 found = true;
+            }
+            else res = nullptr;
+        }
+        parent = parent->getParent();
+    }
+    return res;
+}
+
+SymTable<VariableEntry>*
+findClosestTable(IdentifierNode* id){
+    ASTNode* parent = id->getParent();
+    SymTable<VariableEntry>* res = nullptr;
+    while (res == nullptr && parent != nullptr){
+        if (parent->hasVarTable()){
+            if (parent->getParent()){
+                ScopeNode* scope = (ScopeNode*)parent;
+                res = scope->getVarTable();
+            }
+            else {
+                res = id->getRoot()->getVarTable();
+            }
         }
         parent = parent->getParent();
     }
@@ -102,7 +123,7 @@ void
 IRGen::visitArrayDeclNode (ArrayDeclNode* array) {
     bool isRoot;
     SymTable<VariableEntry>* venv = findTable(array->getIdent(), isRoot);
-    llvm::ArrayType* declType = static_cast<llvm::ArrayType*>(convertType(array->getType()));
+    llvm::Type* declType = convertType(array->getType());
     std::string name = array->getIdent()->getName();
     
     // Global variable
@@ -119,7 +140,10 @@ IRGen::visitArrayDeclNode (ArrayDeclNode* array) {
     }
     // Stack variable
     else{
+        assert(declType->isArrayTy() == true);
         llvm::Value* alloca = Builder->CreateAlloca(declType, nullptr, name);
+        assert(alloca->getType()->isPointerTy() == true);
+
         venv->setLLVMValue(name, alloca);
     }
 
@@ -138,10 +162,14 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
         paramTypes.push_back(convertType(i->getType()));
     }
     
+    
     // Function insert to Module
-    llvm::FunctionType* funcType = llvm::FunctionType::get(retType, paramTypes, false);
     llvm::Function* TheFunction = llvm::Function::Create(
-        funcType, 
+        llvm::FunctionType::get(
+            retType, 
+            paramTypes, 
+            false
+        ), 
         llvm::Function::ExternalLinkage,
         func->getIdent()->getName(), 
         TheModule.get()
@@ -152,17 +180,25 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
         llvm::BasicBlock *entry = BasicBlock::Create(*TheContext, "entry", TheFunction);
         Builder->SetInsertPoint(entry);
 
+        SymTable<VariableEntry>* venv = func->getBody()->getVarTable();
         std::string name;
         bool isRoot = false;
         for(int i = 0; i< paramTypeList.size(); i++){
-            name = paramTypeList[i]->getIdent()->getName();
+            auto param = paramTypeList[i];
+            name = param->getIdent()->getName();
             
-            paramTypeList[i]->visit(this);
-            llvm::Value* alloca = findTable(paramTypeList[i]->getIdent(),isRoot)->get(name).getValue();
-
-            // Create first set of Instr for store arguments into new alloc variables
             llvm::Argument* arg = TheFunction->getArg(i);
-            arg->setName(paramTypeList[i]->getIdent()->getName());
+            arg->setName(param->getIdent()->getName());
+
+            llvm::Value* alloca = Builder->CreateAlloca(
+                paramTypes[i], 
+                nullptr, 
+                name
+            );
+            
+            venv->setLLVMValue(name, alloca);
+            
+            // Create first set of Instr for store arguments into new alloc variables
             Builder->CreateStore(arg, alloca);
         }
 
@@ -199,7 +235,7 @@ IRGen::visitScalarDeclNode (ScalarDeclNode* scalar) {
         llvm::Value* alloca = Builder->CreateAlloca(declType, nullptr, name);
         venv->setLLVMValue(name, alloca);
     }
-
+    
     ASTVisitorBase::visitScalarDeclNode(scalar);
 }
 
@@ -265,9 +301,32 @@ IRGen::visitBoolExprNode (BoolExprNode* boolExpr) {
 
 void
 IRGen::visitCallExprNode (CallExprNode* call) {
-    call->getIdent()->visit(this);
     for (auto i: call->getArguments())
         i->visit(this);
+
+    llvm::Function* F = TheModule->getFunction(call->getIdent()->getName());
+    std::vector<llvm::Value*> args;
+    for (auto i: call->getArguments()){
+        llvm::Value* val = i->getExpr()->getLLVMValue();
+
+        if(val->getType()->isArrayTy()){
+            llvm::Type* elementType = val->getType()->getArrayElementType();
+            
+            val = Builder->CreateGEP(
+                elementType, 
+                val, 
+                std::vector<Value*>{
+                    // represent base address of array
+                    llvm::ConstantInt::get(elementType, 0),
+                    // represent index of element
+                    llvm::ConstantInt::get(elementType, 0)
+                }
+            );
+        }
+        args.push_back(val);
+    }
+    
+    Builder->CreateCall(F, args, "");
     ASTVisitorBase::visitCallExprNode(call);
 }
 
@@ -296,7 +355,6 @@ IRGen::visitIntConstantNode(IntConstantNode* intConst) {
 
 void
 IRGen::visitIntExprNode(IntExprNode* intExpr) {
-
     intExpr->getValue()->visit(this);
     intExpr->setLLVMValue(intExpr->getValue()->getLLVMValue());
     ASTVisitorBase::visitIntExprNode(intExpr);
@@ -307,26 +365,88 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
     bool isRoot;
     string name = ref->getIdent()->getName();
     auto venvEntry = findTable(ref->getIdent(),isRoot)->get(name);
-    llvm::Type* type = convertType(venvEntry.getType());
-    llvm::Value* val = venvEntry.getValue();
     
+    llvm::Value* val = venvEntry.getValue();
+    llvm::Type* type = convertType(venvEntry.getType());
+    
+
+    // Array (type definitetly Pointer)
     if (ref->getIndex()){
         ref->getIndex()->visit(this);
         
-        // Array Access
-        ArrayRef<Value*> indices{
-            // represent base address of array
-            llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0),
-            // represent index of element
-            ref->getIndex()->getLLVMValue()
-        };
-        
-        val = Builder->CreateGEP(type, val, indices);
-    }
-    
-    llvm::Value* retval = Builder->CreateLoad(convertType(ref->getType()), val, "");
-    ref->setLLVMValue(retval);
+        // if(val->getType()->isArrayTy()){
+            val = Builder->CreateGEP(
+                type, 
+                val, 
+                std::vector<Value*>{
+                    // represent base address of array
+                    llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0),
+                    // represent index of element
+                    ref->getIndex()->getLLVMValue()
+                }
+            );
 
+            type = type->getArrayElementType();
+            ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
+        // }
+        // Array Pointer
+        // else{
+        //     std::cout << "Load1";
+        //     llvm::Value* load = Builder->CreateLoad(type, val, "");
+        //     PrimitiveTypeNode* node = new PrimitiveTypeNode(venvEntry.getType()->getTypeEnum());
+        //     type = convertType(node);
+        //     val = Builder->CreateGEP(
+        //         type, 
+        //         load, 
+        //         std::vector<Value*>{ref->getIndex()->getLLVMValue()}
+        //     );
+        //     std::cout << "Load2";
+        //     ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
+        // }
+        // // Pointer Access
+        // if (dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize() == 0) {
+        //     // Pointer Value
+        //     llvm::Value* load = Builder->CreateLoad(type, val, "");
+            
+        //     std::vector<Value*> indices{index};
+        //     val = Builder->CreateGEP(convertType(venvEntry.getType())->getArrayElementType(), load, indices);
+        // }
+        // // Array Access
+        // else{
+        //     std::vector<Value*> indices{
+        //         // represent base address of array
+        //         llvm::ConstantInt::get(index->getType(), 0),
+        //         // represent index of element
+        //         index
+        //     };
+            
+        //     val = Builder->CreateGEP(convertType(venvEntry.getType()), val, indices);
+        // }
+        
+    }
+    else{
+        // Array Pointer
+        if(venvEntry.getType()->isArray()){
+            std::cout << "ArrayPointer" << std::endl;
+
+            val = Builder->CreateGEP(
+                type, 
+                val, 
+                std::vector<Value*>{
+                    // represent base address of array
+                    llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0),
+                    // represent index of element
+                    llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0)
+                }
+            );
+            ref->setLLVMValue(val);
+        }
+        // Normal Scalar
+        else
+            ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
+    }
+
+    
     ASTVisitorBase::visitReferenceExprNode(ref);
 }
 

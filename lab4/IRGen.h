@@ -34,9 +34,6 @@ private:
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
     const std::string ModuleName;
-
-    llvm::Function* TheFunction;
-    bool refCreateLoad = true;
     
 public:
     // Constructor
@@ -45,7 +42,7 @@ public:
     // Utility methods
     unique_ptr<llvm::Module> getModule();
     llvm::Type* convertType(TypeNode* type);
-    SymTable<VariableEntry>* findTable(IdentifierNode* id, bool& isRoot);
+    SymTable<VariableEntry>* findTable(IdentifierNode* id);
 
     // The IR Generation visitors
     // These are the methods that perform the IR code generation 

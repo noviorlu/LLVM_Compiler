@@ -14,6 +14,14 @@ void func2(int a[], bool b[]){
     !b[1];
 }
 
+int func4(){
+    return 0;
+}
+
+bool func5(){
+    return false;
+}
+
 void main(){
     int x[10];
     bool y[10];

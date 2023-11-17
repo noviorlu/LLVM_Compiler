@@ -161,7 +161,7 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
     
     
     // Function insert to Module
-    llvm::Function* TheFunction = llvm::Function::Create(
+    TheFunction = llvm::Function::Create(
         llvm::FunctionType::get(
             retType, 
             paramTypes, 
@@ -171,6 +171,15 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
         func->getIdent()->getName(), 
         TheModule.get()
     );
+
+    // Iterate over the arguments of the function
+    for (llvm::Argument& arg : TheFunction->args()) {
+        // Check if the type of the argument is i1 (boolean)
+        if (arg.getType()->isIntegerTy(1)) {
+            // Add the ZExt attribute to the argument
+            arg.addAttr(llvm::Attribute::ZExt);
+        }
+    }
     
     // If Function not a Prototype
     if(func->getBody()){
@@ -245,11 +254,11 @@ void
 IRGen::visitBinaryExprNode(BinaryExprNode* bin) {
     bin->getLeft()->visit(this);
     llvm::Value* L = bin->getLeft()->getLLVMValue();
-    L = Builder->CreateLoad(convertType(bin->getLeft()->getType()), L, "");
+    // L = Builder->CreateLoad(convertType(bin->getLeft()->getType()), L, "");
 
     bin->getRight()->visit(this);
     llvm::Value* R = bin->getRight()->getLLVMValue();
-    R = Builder->CreateLoad(convertType(bin->getRight()->getType()), R, "");
+    // R = Builder->CreateLoad(convertType(bin->getRight()->getType()), R, "");
 
     llvm::Value* retVal;
 
@@ -298,30 +307,27 @@ IRGen::visitBinaryExprNode(BinaryExprNode* bin) {
 void 
 IRGen::visitBoolExprNode (BoolExprNode* boolExpr) {
     boolExpr->getValue()->visit(this);
+    boolExpr->setLLVMValue(boolExpr->getValue()->getLLVMValue());
     ASTVisitorBase::visitBoolExprNode(boolExpr);
 }
 
 void
 IRGen::visitCallExprNode (CallExprNode* call) {
     llvm::Function* F = TheModule->getFunction(call->getIdent()->getName());
+    assert(F != nullptr);
     std::vector<llvm::Value*> args;
     int counter = 0;
     for (auto i: call->getArguments()){
         i->visit(this);
-
         llvm::Value* val = i->getExpr()->getLLVMValue();
-        
-        llvm::Type* argType = F->getArg(counter)->getType();
-        // Scalar Access, requires load
-        if(!argType->isArrayTy() && !argType->isPointerTy()){
-            val = Builder->CreateLoad(argType, val, "");
-        }
-
         args.push_back(val);
-        counter++;
     }
-    
-    Builder->CreateCall(F, args, "");
+    if(F->getReturnType()->isVoidTy()){
+        Builder->CreateCall(F, args, "");
+        call->setLLVMValue(nullptr);
+    }
+    else
+        call->setLLVMValue(Builder->CreateCall(F, args, ""));
     ASTVisitorBase::visitCallExprNode(call);
 }
 
@@ -367,13 +373,6 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
     // Array (type definitetly Pointer)
     if (ref->getIndex()){
         ref->getIndex()->visit(this);
-        
-        // requires a load here
-        auto node = dynamic_cast<ReferenceExprNode*>(static_cast<IntExprNode*>(ref->getIndex())->getValue());
-        if(node && node->getIndex()){
-            std::cout << "RequreLoad: " << ref->getIndex()->getLLVMValue() << std::endl;
-             ref->getIndex()->setLLVMValue(Builder->CreateLoad(llvm::Type::getInt32Ty(*TheContext), ref->getIndex()->getLLVMValue(), ""));
-        }
 
         if(dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize()!=0){
             val = Builder->CreateGEP(
@@ -414,10 +413,17 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
                     llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0)
                 }
             );
+            goto RefNoLD;
         }
     }
-    std::cout << "RefNode: "<< name<<" " <<val << std::endl;
-    ref->setLLVMValue(val);
+
+    if(refCreateLoad)
+        ref->setLLVMValue(Builder->CreateLoad(type,val,""));
+    else{
+RefNoLD:
+        ref->setLLVMValue(val);
+    }
+        
     ASTVisitorBase::visitReferenceExprNode(ref);
 }
 
@@ -426,7 +432,7 @@ IRGen::visitUnaryExprNode(UnaryExprNode* unary) {
     unary->getOperand()->visit(this);
     llvm::Value* retVal;
     llvm::Value* R = unary->getOperand()->getLLVMValue();
-    R = Builder->CreateLoad(convertType(unary->getOperand()->getType()), R, "");
+    // R = Builder->CreateLoad(convertType(unary->getOperand()->getType()), R, "");
 
     switch (unary->getOpcode()) {
         case ExprNode::Opcode::Not:
@@ -459,7 +465,8 @@ IRGen::visitProgramNode(ProgramNode* prg) {
     TheModule = std::make_unique<llvm::Module>(ModuleName, *TheContext);
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
     
-    ASTVisitorBase::visitProgramNode(prg);
+    //[Here for debug Propose, once finished move to end of block]
+    // ASTVisitorBase::visitProgramNode(prg);
 
     llvm::Function::Create(
         llvm::FunctionType::get(
@@ -494,7 +501,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         TheModule.get()
     );
 
-    llvm::Function::Create(
+    auto func = llvm::Function::Create(
         llvm::FunctionType::get(
             llvm::Type::getVoidTy(*TheContext), 
             std::vector<llvm::Type*>{
@@ -506,6 +513,8 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         "writeBool", 
         TheModule.get()
     );
+    llvm::Argument* firstArg = &*func->arg_begin();
+    firstArg->addAttr(llvm::Attribute::ZExt);
 
     llvm::Function::Create(
         llvm::FunctionType::get(
@@ -519,6 +528,8 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         "writeInt", 
         TheModule.get()
     );
+
+    ASTVisitorBase::visitProgramNode(prg);
 }
 
 void 
@@ -529,11 +540,13 @@ IRGen::visitStmtNode(StmtNode* stmt) {
 void 
 IRGen::visitAssignStmtNode(AssignStmtNode* assign) {
     assign->getValue()->visit(this);
-    auto tmp = Builder->CreateLoad(convertType(assign->getValue()->getType()), assign->getValue()->getLLVMValue(), "");
 
+    refCreateLoad = false;
     assign->getTarget()->visit(this);
+    refCreateLoad = true;
+
     
-    Builder->CreateStore(tmp, assign->getTarget()->getLLVMValue());
+    Builder->CreateStore(assign->getValue()->getLLVMValue(), assign->getTarget()->getLLVMValue());
     ASTVisitorBase::visitAssignStmtNode(assign);
 }
 
@@ -545,10 +558,30 @@ IRGen::visitExprStmtNode(ExprStmtNode* expr) {
 
 void 
 IRGen::visitIfStmtNode(IfStmtNode* ifStmt) {
+    llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(*TheContext, "then", TheFunction);
+    llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(*TheContext, "merge", TheFunction);
+    llvm::BasicBlock* ElseBB;
+
+    if(ifStmt->getHasElse())
+        ElseBB = llvm::BasicBlock::Create(*TheContext, "else", TheFunction);
+    else
+        ElseBB = MergeBB;
+
     ifStmt->getCondition()->visit(this);
+    Builder->CreateCondBr(ifStmt->getCondition()->getLLVMValue(), ThenBB, ElseBB);
+
+    Builder->SetInsertPoint(ThenBB);
     ifStmt->getThen()->visit(this);
-    if (ifStmt->getHasElse())
+    Builder->CreateBr(MergeBB);
+
+    if (ifStmt->getHasElse()){
+        Builder->SetInsertPoint(ElseBB);
         ifStmt->getElse()->visit(this);
+        Builder->CreateBr(MergeBB);
+    }
+    
+
+    Builder->SetInsertPoint(MergeBB);
     ASTVisitorBase::visitIfStmtNode(ifStmt);
 }
 
@@ -574,8 +607,20 @@ IRGen::visitScopeNode(ScopeNode* scope) {
 
 void 
 IRGen::visitWhileStmtNode(WhileStmtNode* whileStmt) {
+    llvm::BasicBlock* whileCond = BasicBlock::Create(*TheContext, "while.cond", TheFunction);
+    llvm::BasicBlock* whileBody = BasicBlock::Create(*TheContext, "while.body", TheFunction);
+    llvm::BasicBlock* whileExit = BasicBlock::Create(*TheContext, "while.exit", TheFunction);
+    Builder->CreateBr(whileCond);
+
+    Builder->SetInsertPoint(whileCond);
     whileStmt->getCondition()->visit(this);
+    Builder->CreateCondBr(whileStmt->getCondition()->getLLVMValue(), whileBody, whileExit);
+    
+    Builder->SetInsertPoint(whileBody);
     whileStmt->getBody()->visit(this);
+    Builder->CreateBr(whileCond);
+    
+    Builder->SetInsertPoint(whileExit);
     ASTVisitorBase::visitWhileStmtNode(whileStmt);
 }
 

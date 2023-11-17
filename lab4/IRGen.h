@@ -34,6 +34,9 @@ private:
     std::unique_ptr<llvm::Module> TheModule;
     std::unique_ptr<llvm::IRBuilder<>> Builder;
     const std::string ModuleName;
+
+    llvm::Function* TheFunction;
+    bool refCreateLoad = true;
     
 public:
     // Constructor

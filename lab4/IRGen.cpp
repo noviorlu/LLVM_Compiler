@@ -140,10 +140,7 @@ IRGen::visitArrayDeclNode (ArrayDeclNode* array) {
     }
     // Stack variable
     else{
-        assert(declType->isArrayTy() == true);
         llvm::Value* alloca = Builder->CreateAlloca(declType, nullptr, name);
-        assert(alloca->getType()->isPointerTy() == true);
-
         venv->setLLVMValue(name, alloca);
     }
 
@@ -247,10 +244,15 @@ IRGen::visitExprNode (ExprNode* exp) {
 void 
 IRGen::visitBinaryExprNode(BinaryExprNode* bin) {
     bin->getLeft()->visit(this);
-    bin->getRight()->visit(this);
-    llvm::Value* retVal;
     llvm::Value* L = bin->getLeft()->getLLVMValue();
+    L = Builder->CreateLoad(convertType(bin->getLeft()->getType()), L, "");
+
+    bin->getRight()->visit(this);
     llvm::Value* R = bin->getRight()->getLLVMValue();
+    R = Builder->CreateLoad(convertType(bin->getRight()->getType()), R, "");
+
+    llvm::Value* retVal;
+
     switch (bin->getOpcode()) {
         case ExprNode::Opcode::Addition:
             retVal = Builder->CreateAdd(L, R, "");
@@ -301,29 +303,22 @@ IRGen::visitBoolExprNode (BoolExprNode* boolExpr) {
 
 void
 IRGen::visitCallExprNode (CallExprNode* call) {
-    for (auto i: call->getArguments())
-        i->visit(this);
-
     llvm::Function* F = TheModule->getFunction(call->getIdent()->getName());
     std::vector<llvm::Value*> args;
+    int counter = 0;
     for (auto i: call->getArguments()){
-        llvm::Value* val = i->getExpr()->getLLVMValue();
+        i->visit(this);
 
-        if(val->getType()->isArrayTy()){
-            llvm::Type* elementType = val->getType()->getArrayElementType();
-            
-            val = Builder->CreateGEP(
-                elementType, 
-                val, 
-                std::vector<Value*>{
-                    // represent base address of array
-                    llvm::ConstantInt::get(elementType, 0),
-                    // represent index of element
-                    llvm::ConstantInt::get(elementType, 0)
-                }
-            );
+        llvm::Value* val = i->getExpr()->getLLVMValue();
+        
+        llvm::Type* argType = F->getArg(counter)->getType();
+        // Scalar Access, requires load
+        if(!argType->isArrayTy() && !argType->isPointerTy()){
+            val = Builder->CreateLoad(argType, val, "");
         }
+
         args.push_back(val);
+        counter++;
     }
     
     Builder->CreateCall(F, args, "");
@@ -369,12 +364,18 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
     llvm::Value* val = venvEntry.getValue();
     llvm::Type* type = convertType(venvEntry.getType());
     
-
     // Array (type definitetly Pointer)
     if (ref->getIndex()){
         ref->getIndex()->visit(this);
         
-        // if(val->getType()->isArrayTy()){
+        // requires a load here
+        auto node = dynamic_cast<ReferenceExprNode*>(static_cast<IntExprNode*>(ref->getIndex())->getValue());
+        if(node && node->getIndex()){
+            std::cout << "RequreLoad: " << ref->getIndex()->getLLVMValue() << std::endl;
+             ref->getIndex()->setLLVMValue(Builder->CreateLoad(llvm::Type::getInt32Ty(*TheContext), ref->getIndex()->getLLVMValue(), ""));
+        }
+
+        if(dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize()!=0){
             val = Builder->CreateGEP(
                 type, 
                 val, 
@@ -387,48 +388,22 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
             );
 
             type = type->getArrayElementType();
-            ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
-        // }
+        }
         // Array Pointer
-        // else{
-        //     std::cout << "Load1";
-        //     llvm::Value* load = Builder->CreateLoad(type, val, "");
-        //     PrimitiveTypeNode* node = new PrimitiveTypeNode(venvEntry.getType()->getTypeEnum());
-        //     type = convertType(node);
-        //     val = Builder->CreateGEP(
-        //         type, 
-        //         load, 
-        //         std::vector<Value*>{ref->getIndex()->getLLVMValue()}
-        //     );
-        //     std::cout << "Load2";
-        //     ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
-        // }
-        // // Pointer Access
-        // if (dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize() == 0) {
-        //     // Pointer Value
-        //     llvm::Value* load = Builder->CreateLoad(type, val, "");
-            
-        //     std::vector<Value*> indices{index};
-        //     val = Builder->CreateGEP(convertType(venvEntry.getType())->getArrayElementType(), load, indices);
-        // }
-        // // Array Access
-        // else{
-        //     std::vector<Value*> indices{
-        //         // represent base address of array
-        //         llvm::ConstantInt::get(index->getType(), 0),
-        //         // represent index of element
-        //         index
-        //     };
-            
-        //     val = Builder->CreateGEP(convertType(venvEntry.getType()), val, indices);
-        // }
-        
+        else{
+            llvm::Value* load = Builder->CreateLoad(type, val, "");
+            PrimitiveTypeNode* node = new PrimitiveTypeNode(venvEntry.getType()->getTypeEnum());
+            type = convertType(node);
+            val = Builder->CreateGEP(
+                type, 
+                load, 
+                std::vector<Value*>{ref->getIndex()->getLLVMValue()}
+            );
+        }
     }
     else{
         // Array Pointer
         if(venvEntry.getType()->isArray()){
-            std::cout << "ArrayPointer" << std::endl;
-
             val = Builder->CreateGEP(
                 type, 
                 val, 
@@ -439,14 +414,10 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
                     llvm::ConstantInt::get(llvm::Type::getInt32Ty(*TheContext), 0)
                 }
             );
-            ref->setLLVMValue(val);
         }
-        // Normal Scalar
-        else
-            ref->setLLVMValue(Builder->CreateLoad(type, val, ""));
     }
-
-    
+    std::cout << "RefNode: "<< name<<" " <<val << std::endl;
+    ref->setLLVMValue(val);
     ASTVisitorBase::visitReferenceExprNode(ref);
 }
 
@@ -455,6 +426,8 @@ IRGen::visitUnaryExprNode(UnaryExprNode* unary) {
     unary->getOperand()->visit(this);
     llvm::Value* retVal;
     llvm::Value* R = unary->getOperand()->getLLVMValue();
+    R = Builder->CreateLoad(convertType(unary->getOperand()->getType()), R, "");
+
     switch (unary->getOpcode()) {
         case ExprNode::Opcode::Not:
             retVal = Builder->CreateNot(R, "");
@@ -555,8 +528,12 @@ IRGen::visitStmtNode(StmtNode* stmt) {
 
 void 
 IRGen::visitAssignStmtNode(AssignStmtNode* assign) {
-    assign->getTarget()->visit(this);
     assign->getValue()->visit(this);
+    auto tmp = Builder->CreateLoad(convertType(assign->getValue()->getType()), assign->getValue()->getLLVMValue(), "");
+
+    assign->getTarget()->visit(this);
+    
+    Builder->CreateStore(tmp, assign->getTarget()->getLLVMValue());
     ASTVisitorBase::visitAssignStmtNode(assign);
 }
 

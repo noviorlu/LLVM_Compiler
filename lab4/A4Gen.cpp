@@ -19,7 +19,6 @@
 #include "smallCLexer.h"
 #include "smallCParser.h"
 #include "ASTVisitorBase.h"
-#include "ASTPrinter.h"
 #include "SemanticAnalyzer.h"
 #include "IRGen.h"
 

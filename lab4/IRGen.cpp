@@ -132,8 +132,8 @@ IRGen::visitArrayDeclNode (ArrayDeclNode* array) {
             *TheModule,
             declType,
             false,
-            llvm::GlobalValue::ExternalLinkage,
-            nullptr,
+            llvm::GlobalValue::CommonLinkage,
+            llvm::Constant::getNullValue(declType),
             name
         );
         venv->setLLVMValue(name, globalVar);
@@ -230,8 +230,8 @@ IRGen::visitScalarDeclNode (ScalarDeclNode* scalar) {
             *TheModule,
             declType,
             false,
-            llvm::GlobalValue::ExternalLinkage,
-            nullptr,
+            llvm::GlobalValue::CommonLinkage,
+            llvm::Constant::getNullValue(declType),
             name
         );
         venv->setLLVMValue(name, globalVar);
@@ -254,11 +254,9 @@ void
 IRGen::visitBinaryExprNode(BinaryExprNode* bin) {
     bin->getLeft()->visit(this);
     llvm::Value* L = bin->getLeft()->getLLVMValue();
-    // L = Builder->CreateLoad(convertType(bin->getLeft()->getType()), L, "");
 
     bin->getRight()->visit(this);
     llvm::Value* R = bin->getRight()->getLLVMValue();
-    // R = Builder->CreateLoad(convertType(bin->getRight()->getType()), R, "");
 
     llvm::Value* retVal;
 
@@ -432,7 +430,6 @@ IRGen::visitUnaryExprNode(UnaryExprNode* unary) {
     unary->getOperand()->visit(this);
     llvm::Value* retVal;
     llvm::Value* R = unary->getOperand()->getLLVMValue();
-    // R = Builder->CreateLoad(convertType(unary->getOperand()->getType()), R, "");
 
     switch (unary->getOpcode()) {
         case ExprNode::Opcode::Not:
@@ -464,9 +461,6 @@ void
 IRGen::visitProgramNode(ProgramNode* prg) {
     TheModule = std::make_unique<llvm::Module>(ModuleName, *TheContext);
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
-    
-    //[Here for debug Propose, once finished move to end of block]
-    // ASTVisitorBase::visitProgramNode(prg);
 
     llvm::Function::Create(
         llvm::FunctionType::get(

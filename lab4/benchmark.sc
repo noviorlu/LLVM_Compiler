@@ -1,26 +1,11 @@
 #include "scio.h"
 
-void main(){
-    int x;
-    int y;
-    int z;
-    x = 1;
-    y = 3;
-    z = 11;
+int q;
+bool a[10];
 
-    while (x < 5 && z != 1) {
-        if (y < 5) {
-            writeInt(y);
-            newLine();
-            y = y + 1;
-        }
-        else {
-            writeInt(-5);
-            newLine();
-        }
-        
-        writeInt(x);
-        newLine();
-        x = x + 1;
-    }
+int main() {
+   q = 13;
+   writeInt(q);
+   newLine();
+   return q;
 }

@@ -161,6 +161,10 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
     
     
     // Function insert to Module
+    TheFunction = TheModule->getFunction(func->getIdent()->getName());
+    if(TheFunction != nullptr)
+        TheFunction->eraseFromParent();
+    
     TheFunction = llvm::Function::Create(
         llvm::FunctionType::get(
             retType, 
@@ -462,7 +466,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
     TheModule = std::make_unique<llvm::Module>(ModuleName, *TheContext);
     Builder = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 
-    llvm::Function::Create(
+    auto newLine = llvm::Function::Create(
         llvm::FunctionType::get(
             llvm::Type::getVoidTy(*TheContext), 
             std::vector<llvm::Type*>(), 
@@ -473,7 +477,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         TheModule.get()
     );
 
-    llvm::Function::Create(
+    auto readBool = llvm::Function::Create(
         llvm::FunctionType::get(
             llvm::Type::getInt1Ty(*TheContext), 
             std::vector<llvm::Type*>(), 
@@ -484,7 +488,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         TheModule.get()
     );
 
-    llvm::Function::Create(
+    auto readInt = llvm::Function::Create(
         llvm::FunctionType::get(
             llvm::Type::getInt32Ty(*TheContext), 
             std::vector<llvm::Type*>(), 
@@ -495,7 +499,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         TheModule.get()
     );
 
-    auto func = llvm::Function::Create(
+    auto writeBool = llvm::Function::Create(
         llvm::FunctionType::get(
             llvm::Type::getVoidTy(*TheContext), 
             std::vector<llvm::Type*>{
@@ -507,7 +511,7 @@ IRGen::visitProgramNode(ProgramNode* prg) {
         "writeBool", 
         TheModule.get()
     );
-    llvm::Argument* firstArg = &*func->arg_begin();
+    llvm::Argument* firstArg = &*writeBool->arg_begin();
     firstArg->addAttr(llvm::Attribute::ZExt);
 
     llvm::Function::Create(

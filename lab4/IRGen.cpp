@@ -216,17 +216,43 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
         func->getBody()->visit(this);
 
         if(func->getRetType()->getTypeEnum() == TypeNode::TypeEnum::Void){
-            llvm::BasicBlock& lastBB = TheFunction->back();
-            if (!lastBB.empty()){
-                llvm::Instruction &lastInst = lastBB.back();
+            llvm::BasicBlock* lastBB;
+            bool findMerge = false;
+
+            
+
+            if(!findMerge) lastBB = &(TheFunction->back());
+            assert(lastBB != nullptr);
+            if (lastBB->getName() == "else"){
+                llvm::BasicBlock* prevBB = nullptr;
+                for (llvm::BasicBlock& BB : *TheFunction) {
+                        lastBB = prevBB;
+                        prevBB = &BB;
+                }
+            }
+
+            Builder->SetInsertPoint(lastBB);
+            if (!lastBB->empty()){
+                llvm::Instruction &lastInst = lastBB->back();
                 if (lastInst.getOpcode() != llvm::Instruction::Ret) {
                     Builder->CreateRetVoid();
                 }
             }
+            // for function without one basic block but doesnot have any content
             else{
                 Builder->CreateRetVoid();
             }
         }
+    }
+    for (llvm::BasicBlock& BB : *TheFunction) {
+        if (BB.getName() == "merge") {
+            for (const llvm::Instruction &I : BB) {
+                I.print(llvm::outs());
+                llvm::outs() << "\n";
+            }
+            break;
+        }
+
     }
     ASTVisitorBase::visitFunctionDeclNode(func);
 }
@@ -418,7 +444,7 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
     }
     else{
         // Array Pointer
-        if(venvEntry.getType()->isArray()){
+        if(venvEntry.getType()->isArray() && dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize()!=0){
             val = Builder->CreateGEP(
                 type, 
                 val, 
@@ -570,28 +596,37 @@ IRGen::visitExprStmtNode(ExprStmtNode* expr) {
 
 void 
 IRGen::visitIfStmtNode(IfStmtNode* ifStmt) {
+    llvm::BasicBlock* upperBB = Builder->GetInsertBlock();
     llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(*TheContext, "then", TheFunction);
+    llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(*TheContext, "merge", TheFunction);
     llvm::BasicBlock* ElseBB;
+
     if(ifStmt->getHasElse())
         ElseBB = llvm::BasicBlock::Create(*TheContext, "else", TheFunction);
+    else
+        ElseBB = MergeBB;
 
-    llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(*TheContext, "merge", TheFunction);
-    if(ElseBB == nullptr) ElseBB = MergeBB;
-
+    // Condition Block
     ifStmt->getCondition()->visit(this);
     Builder->CreateCondBr(ifStmt->getCondition()->getLLVMValue(), ThenBB, ElseBB);
-
+    
+    // Then Block
     Builder->SetInsertPoint(ThenBB);
     ifStmt->getThen()->visit(this);
-    Builder->CreateBr(MergeBB);
+    Builder->SetInsertPoint(ThenBB);
+    if (ThenBB->back().getOpcode() != llvm::Instruction::Ret && ThenBB->back().getOpcode() != llvm::Instruction::Br)
+        Builder->CreateBr(MergeBB);
 
+    // Else Block
     if (ifStmt->getHasElse()){
         Builder->SetInsertPoint(ElseBB);
         ifStmt->getElse()->visit(this);
-        Builder->CreateBr(MergeBB);
+        Builder->SetInsertPoint(ElseBB);
+        if (ElseBB->back().getOpcode() != llvm::Instruction::Ret && ElseBB->back().getOpcode() != llvm::Instruction::Br)
+            Builder->CreateBr(MergeBB);
     }
     
-
+    // Merge Block
     Builder->SetInsertPoint(MergeBB);
     ASTVisitorBase::visitIfStmtNode(ifStmt);
 }
@@ -621,6 +656,7 @@ IRGen::visitWhileStmtNode(WhileStmtNode* whileStmt) {
     llvm::BasicBlock* whileCond = BasicBlock::Create(*TheContext, "while.cond", TheFunction);
     llvm::BasicBlock* whileBody = BasicBlock::Create(*TheContext, "while.body", TheFunction);
     llvm::BasicBlock* whileExit = BasicBlock::Create(*TheContext, "while.exit", TheFunction);
+
     Builder->CreateBr(whileCond);
 
     Builder->SetInsertPoint(whileCond);
@@ -629,7 +665,10 @@ IRGen::visitWhileStmtNode(WhileStmtNode* whileStmt) {
     
     Builder->SetInsertPoint(whileBody);
     whileStmt->getBody()->visit(this);
-    Builder->CreateBr(whileCond);
+
+    if (Builder->GetInsertBlock()->back().getOpcode() != llvm::Instruction::Ret && Builder->GetInsertBlock()->back().getOpcode() != llvm::Instruction::Br){
+        Builder->CreateBr(whileCond);
+    }
     
     Builder->SetInsertPoint(whileExit);
     ASTVisitorBase::visitWhileStmtNode(whileStmt);

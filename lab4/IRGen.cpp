@@ -228,8 +228,6 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
             }
         }
     }
-    
-    
     ASTVisitorBase::visitFunctionDeclNode(func);
 }
 
@@ -386,7 +384,11 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
     
     // Array (type definitetly Pointer)
     if (ref->getIndex()){
+        
+        bool record = refCreateLoad;
+        refCreateLoad = true;
         ref->getIndex()->visit(this);
+        refCreateLoad = record;
 
         if(dynamic_cast<ArrayTypeNode*>(venvEntry.getType())->getSize()!=0){
             val = Builder->CreateGEP(
@@ -431,13 +433,14 @@ IRGen::visitReferenceExprNode(ReferenceExprNode* ref) {
         }
     }
 
-    if(refCreateLoad)
+    if(refCreateLoad){
         ref->setLLVMValue(Builder->CreateLoad(type,val,""));
+    }
     else{
 RefNoLD:
         ref->setLLVMValue(val);
     }
-        
+
     ASTVisitorBase::visitReferenceExprNode(ref);
 }
 
@@ -554,7 +557,6 @@ IRGen::visitAssignStmtNode(AssignStmtNode* assign) {
     refCreateLoad = false;
     assign->getTarget()->visit(this);
     refCreateLoad = true;
-
     
     Builder->CreateStore(assign->getValue()->getLLVMValue(), assign->getTarget()->getLLVMValue());
     ASTVisitorBase::visitAssignStmtNode(assign);

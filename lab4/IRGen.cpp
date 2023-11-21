@@ -214,10 +214,22 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
 
         // go into Body Scope
         func->getBody()->visit(this);
+
+        if(func->getRetType()->getTypeEnum() == TypeNode::TypeEnum::Void){
+            llvm::BasicBlock& lastBB = TheFunction->back();
+            if (!lastBB.empty()){
+                llvm::Instruction &lastInst = lastBB.back();
+                if (lastInst.getOpcode() != llvm::Instruction::Ret) {
+                    Builder->CreateRetVoid();
+                }
+            }
+            else{
+                Builder->CreateRetVoid();
+            }
+        }
     }
     
-    if(func->getRetType()->getTypeEnum() == TypeNode::TypeEnum::Void)
-        Builder->CreateRetVoid();
+    
     ASTVisitorBase::visitFunctionDeclNode(func);
 }
 
@@ -557,13 +569,12 @@ IRGen::visitExprStmtNode(ExprStmtNode* expr) {
 void 
 IRGen::visitIfStmtNode(IfStmtNode* ifStmt) {
     llvm::BasicBlock* ThenBB = llvm::BasicBlock::Create(*TheContext, "then", TheFunction);
-    llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(*TheContext, "merge", TheFunction);
     llvm::BasicBlock* ElseBB;
-
     if(ifStmt->getHasElse())
         ElseBB = llvm::BasicBlock::Create(*TheContext, "else", TheFunction);
-    else
-        ElseBB = MergeBB;
+
+    llvm::BasicBlock* MergeBB = llvm::BasicBlock::Create(*TheContext, "merge", TheFunction);
+    if(ElseBB == nullptr) ElseBB = MergeBB;
 
     ifStmt->getCondition()->visit(this);
     Builder->CreateCondBr(ifStmt->getCondition()->getLLVMValue(), ThenBB, ElseBB);

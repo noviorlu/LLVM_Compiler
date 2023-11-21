@@ -2,7 +2,7 @@ rm ./benchmark.bc
 rm ./benchmark.ll
 rm ./benchmark-ref.ll
 
-./A4Gen-ref ./benchmark.sc
+/cad2/ece467f/public/A4Gen-reference ./benchmark.sc
 /cad2/ece467f/llvm-project/build/bin/llvm-dis ./benchmark.bc
 # Check if the source file exists
 if [ -f "./benchmark.ll" ]; then

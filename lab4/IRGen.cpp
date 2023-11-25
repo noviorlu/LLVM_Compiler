@@ -223,11 +223,17 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
 
             if(!findMerge) lastBB = &(TheFunction->back());
             assert(lastBB != nullptr);
-            if (lastBB->getName() == "else"){
-                llvm::BasicBlock* prevBB = nullptr;
-                for (llvm::BasicBlock& BB : *TheFunction) {
-                        lastBB = prevBB;
-                        prevBB = &BB;
+            
+            string blockName = lastBB->getName().str();
+            if (blockName.length() >= 4) {
+                std::string substring = blockName.substr(0, 4);
+                
+                if (substring == "else"){
+                    llvm::BasicBlock* prevBB = nullptr;
+                    for (llvm::BasicBlock& BB : *TheFunction) {
+                            lastBB = prevBB;
+                            prevBB = &BB;
+                    }
                 }
             }
 
@@ -244,16 +250,17 @@ IRGen::visitFunctionDeclNode (FunctionDeclNode* func) {
             }
         }
     }
-    for (llvm::BasicBlock& BB : *TheFunction) {
-        if (BB.getName() == "merge") {
-            for (const llvm::Instruction &I : BB) {
-                I.print(llvm::outs());
-                llvm::outs() << "\n";
-            }
-            break;
-        }
+    // [DEBUG]: printer for BasicBlock in Function
+    // for (llvm::BasicBlock& BB : *TheFunction) {
+    //     if (BB.getName() == "merge5") {
+    //         for (const llvm::Instruction &I : BB) {
+    //             I.print(llvm::outs());
+    //             llvm::outs() << "\n";
+    //         }
+    //         break;
+    //     }
 
-    }
+    // }
     ASTVisitorBase::visitFunctionDeclNode(func);
 }
 
@@ -594,6 +601,25 @@ IRGen::visitExprStmtNode(ExprStmtNode* expr) {
     ASTVisitorBase::visitExprStmtNode(expr);
 }
 
+bool 
+IRGen::checkInstrBrRet(llvm::Instruction* instr){
+    auto opcode = instr->getOpcode();
+    if(opcode == llvm::Instruction::Ret) return true;
+    if(opcode == llvm::Instruction::Br) return true;
+    return false;
+}
+
+void 
+IRGen::InsertBranch(llvm::BasicBlock* checkBB, llvm::BasicBlock* destBB){
+    if(checkBB->empty()){
+        Builder->CreateBr(destBB);
+    }
+    else{
+        if(!checkInstrBrRet(&checkBB->back()))
+            Builder->CreateBr(destBB);
+    }
+}
+
 void 
 IRGen::visitIfStmtNode(IfStmtNode* ifStmt) {
     llvm::BasicBlock* upperBB = Builder->GetInsertBlock();
@@ -613,17 +639,13 @@ IRGen::visitIfStmtNode(IfStmtNode* ifStmt) {
     // Then Block
     Builder->SetInsertPoint(ThenBB);
     ifStmt->getThen()->visit(this);
-    Builder->SetInsertPoint(ThenBB);
-    if (ThenBB->back().getOpcode() != llvm::Instruction::Ret && ThenBB->back().getOpcode() != llvm::Instruction::Br)
-        Builder->CreateBr(MergeBB);
+    InsertBranch(Builder->GetInsertBlock(), MergeBB);
 
     // Else Block
     if (ifStmt->getHasElse()){
         Builder->SetInsertPoint(ElseBB);
         ifStmt->getElse()->visit(this);
-        Builder->SetInsertPoint(ElseBB);
-        if (ElseBB->back().getOpcode() != llvm::Instruction::Ret && ElseBB->back().getOpcode() != llvm::Instruction::Br)
-            Builder->CreateBr(MergeBB);
+        InsertBranch(Builder->GetInsertBlock(), MergeBB);
     }
     
     // Merge Block
@@ -665,10 +687,7 @@ IRGen::visitWhileStmtNode(WhileStmtNode* whileStmt) {
     
     Builder->SetInsertPoint(whileBody);
     whileStmt->getBody()->visit(this);
-
-    if (Builder->GetInsertBlock()->back().getOpcode() != llvm::Instruction::Ret && Builder->GetInsertBlock()->back().getOpcode() != llvm::Instruction::Br){
-        Builder->CreateBr(whileCond);
-    }
+    InsertBranch(Builder->GetInsertBlock(), whileCond);
     
     Builder->SetInsertPoint(whileExit);
     ASTVisitorBase::visitWhileStmtNode(whileStmt);

@@ -1,35 +1,21 @@
 #include "scio.h"
+int main() {
 
-void func0(){
+   bool t;
+   bool t2;
+   bool t3;
+   int x;
+   int y;
+   int z;
 
-}
+   y = 5;
 
-void func1(int a, bool b){
-    -a;
-    !b;
-}
-
-void func2(int a[], bool b[]){
-    a[3]+a[4];
-    !b[1];
-}
-
-int func4(){
-    return 0;
-}
-
-bool func5(){
-    return false;
-}
-
-void main(){
-    int x[10];
-    bool y[10];
-    int a;
-    bool b;
-
-    func0();
-    func1(a,b);
-    func1(x[3],y[3]);
-    func2(x,y);
+   t = false;
+   t2 = false;
+   t3 = true;
+   if ((t2 && t3) || t2 || t) writeInt(y);
+   else writeInt(0);
+   newLine();
+  
+   return 0;
 }

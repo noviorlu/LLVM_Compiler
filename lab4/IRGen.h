@@ -46,7 +46,9 @@ public:
     unique_ptr<llvm::Module> getModule();
     llvm::Type* convertType(TypeNode* type);
     SymTable<VariableEntry>* findTable(IdentifierNode* id, bool& isRoot);
-
+    
+    bool checkInstrBrRet(llvm::Instruction* instr);
+    void InsertBranch(llvm::BasicBlock* checkBB, llvm::BasicBlock* destBB);
     // The IR Generation visitors
     // These are the methods that perform the IR code generation 
     // The methods override their counterparts in the ASTVisitorBase class

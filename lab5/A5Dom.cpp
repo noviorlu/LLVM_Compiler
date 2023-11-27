@@ -48,24 +48,42 @@ public:
   std::vector<std::string> dominator;
   std::vector<std::string> dominated;
   std::vector<std::string> dirDominator;
-  std::vector<std::string> dirDominated;
+
+  std::vector<std::string> postDominator;
+  std::vector<std::string> postDominated;
+  std::vector<std::string> postDirDominator;
 
   void Printer(){
     std::cout << name <<  ":" << std::endl;
-    std::cout << "\tDominator: ";
-    std::sort(dominator.begin(), dominator.end());
-    if(dominator.size() == 0) std::cout << "X" << std::endl;
-    else printVector(dominator);
+    // std::cout << "\tDominator: ";
+    // std::sort(dominator.begin(), dominator.end());
+    // if(dominator.size() == 0) std::cout << "X" << std::endl;
+    // else printVector(dominator);
 
-    std::cout << "\tDominated: ";
+    std::cout << "\t";
     std::sort(dominated.begin(), dominated.end());
     if(dominated.size() == 0) std::cout << "X" << std::endl;
     else printVector(dominated);
 
-    std::cout << "\tDirDominator: ";
+    std::cout << "\t";
     std::sort(dirDominator.begin(), dirDominator.end());
     if(dirDominator.size() == 0) std::cout << "X" << std::endl;
     else printVector(dirDominator);
+
+    // std::cout << "\tPost Dominator: ";
+    // std::sort(postDominator.begin(), postDominator.end());
+    // if(postDominator.size() == 0) std::cout << "X" << std::endl;
+    // else printVector(postDominator);
+
+    std::cout << "\t";
+    std::sort(postDominated.begin(), postDominated.end());
+    if(postDominated.size() == 0) std::cout << "X" << std::endl;
+    else printVector(postDominated);
+
+    std::cout << "\t";
+    std::sort(postDirDominator.begin(), postDirDominator.end());
+    if(postDirDominator.size() == 0) std::cout << "X" << std::endl;
+    else printVector(postDirDominator);
   }
 };
 std::map<std::string, CFGEntry*> CFG;
@@ -174,18 +192,55 @@ void DominatedPipeline(CFGEntry* currEntry){
 }
 
 void DirDominatorPipeline(CFGEntry* currEntry){
+  std::vector<std::string> dirDom = currEntry->dirDominator;
+  
+  for(const std::string& S : currEntry->dirDominator){
+    for(const std::string& T: currEntry->dirDominator){
+      if(S==T) continue;
+      const auto & dirDomS = CFG[S]->dirDominator;
 
-  auto& dirDom = currEntry->dirDominator;
-  for(int i = 0; i < dirDom.size(); i++){
-    for(int j = 0; j < dirDom.size(); j++){
-      if(i == j) continue;
-      const auto & dirDomI = CFG[dirDom[i]]->dirDominator;
-      if(std::find(dirDomI.begin(), dirDomI.end(), dirDom[j]) != dirDomI.end()){
-        Remove(dirDom, dirDom[j]);
-        changed = true;
+      if(std::find(dirDomS.begin(), dirDomS.end(), T) != dirDomS.end()){
+        Remove(dirDom, T);
       }
     }
   }
+  currEntry->dirDominator = dirDom;
+}
+
+void PostDominatorPipeline(CFGEntry* currEntry){
+  std::vector<std::string> oldDom = currEntry->postDominator;
+
+  bool set = false;
+  for (const auto& element : currEntry->successors) {
+    currEntry->postDominator = Intersection(currEntry->postDominator, element->postDominator);
+  }
+  currEntry->postDominator = Union(std::vector<std::string>{currEntry->name}, currEntry->postDominator);
+
+  if(oldDom != currEntry->postDominator) changed = true;
+}
+
+void PostDominatedPipeline(CFGEntry* currEntry){
+  for (const auto& pair : CFG) {
+    if (std::find(pair.second->postDominator.begin(), pair.second->postDominator.end(), currEntry->name) != pair.second->postDominator.end()) {
+        currEntry->postDominated.push_back(pair.second->name);
+    }
+  }
+}
+
+void PostDirDominatorPipeline(CFGEntry* currEntry){
+  std::vector<std::string> dirDom = currEntry->postDirDominator;
+  
+  for(const std::string& S : currEntry->postDirDominator){
+    for(const std::string& T: currEntry->postDirDominator){
+      if(S==T) continue;
+      const auto & dirDomS = CFG[S]->postDirDominator;
+
+      if(std::find(dirDomS.begin(), dirDomS.end(), T) != dirDomS.end()){
+        Remove(dirDom, T);
+      }
+    }
+  }
+  currEntry->postDirDominator = dirDom;
 }
 
 void FrontPropagatePrinter(CFGEntry* currEntry){
@@ -215,17 +270,21 @@ void processFunction(Function &F) {
   CreateCFG(CFG["entry"]->BB);
   assert(end.size() == 1);
 
-  /* Dominator */
+
   std::vector<std::string> nodeList;
   for (const auto& pair : CFG) {
     nodeList.push_back(pair.first);
   }
   for (const auto& pair : CFG) {
     pair.second->dominator = nodeList;
+    pair.second->postDominator = nodeList;
   }
   CFG["entry"]->dominator.clear();
   CFG["entry"]->dominator.push_back("entry");
+  CFG[end[0]]->postDominator.clear();
+  CFG[end[0]]->postDominator.push_back(end[0]);
 
+  /* Dominator */
   changed = true;
   while(changed){
     changed = false;
@@ -256,7 +315,33 @@ void processFunction(Function &F) {
 
 
   
-  std::cout << "Printer"<< std::endl;
+  /* Post Dominator */
+  changed = true;
+  while(changed){
+    changed = false;
+    for (const auto& pair : CFG) {
+      PostDominatorPipeline(pair.second);
+    }
+  }
+
+  /* Post Dominated */
+  for (const auto& pair : CFG) {
+    PostDominatedPipeline(pair.second);
+  }
+
+  /* Post Direct Dominator */
+  for (const auto& pair : CFG) {
+    if(pair.first == end[0])continue;
+    pair.second->postDirDominator = pair.second->postDominator;
+    Remove(pair.second->postDirDominator, pair.second->name);
+  }
+  for (const auto& pair : CFG) {
+    if(pair.first == end[0])continue;
+    PostDirDominatorPipeline(pair.second);
+  }
+
+  
+  /* Printer */
   for (const auto& pair : CFG) {
     pair.second->Printer();
   }

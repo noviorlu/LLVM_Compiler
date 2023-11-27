@@ -1,0 +1,29 @@
+Printer
+else:
+	Dominator: else entry while.body while.cond 
+	Dominated: else 
+	DirDominator: while.body 
+entry:
+	Dominator: entry 
+	Dominated: else entry merge then while.body while.cond while.exit 
+	DirDominator: X
+merge:
+	Dominator: entry merge while.body while.cond 
+	Dominated: merge 
+	DirDominator: while.body 
+then:
+	Dominator: entry then while.body while.cond 
+	Dominated: then 
+	DirDominator: while.body 
+while.body:
+	Dominator: entry while.body while.cond 
+	Dominated: else merge then while.body 
+	DirDominator: while.cond 
+while.cond:
+	Dominator: entry while.cond 
+	Dominated: else merge then while.body while.cond while.exit 
+	DirDominator: entry 
+while.exit:
+	Dominator: entry while.cond while.exit 
+	Dominated: while.exit 
+	DirDominator: while.cond 

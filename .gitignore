@@ -6,3 +6,8 @@
 /lab4/A4Gen
 /lab4/A4Gen-ref
 /lab4/benchmark*
+/lab5/CMakeFiles/*
+/lab5/*.so
+/lab5/*.cmake
+/lab5/CMakeCache.txt
+/lab5/Makefile

@@ -1,22 +1,19 @@
 #include "scio.h"
-void main() {
+int main() {
     int x;
     int y;
     int z;
-    while (x < 5){
-        return;
+    x = 1;
+    y = 3;
+    z = 11;
+
+    while (x < 5 && z != 1) {
+        if (y < 5) {
+            y = y + 1;
+        }
+        else {
+        }
+        x = x + 1;
     }
-    if (x > 6){
-        return;
-    }
-    else{
-        return;
-    }
-    if (y == z){
-        y = 2;
-    }
-    else{
-        z = 1;
-    }
-    return;
+    return 0;
 }

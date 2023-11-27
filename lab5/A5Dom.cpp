@@ -18,15 +18,248 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <set>
+#include <cassert>
+#include <iostream>
+#include <algorithm>
+#include <iterator>
 
 using namespace llvm;
 using namespace std;
 
 namespace {
 
+void printVector(const std::vector<std::string>& vector){
+  for (const auto& element : vector) {
+    std::cout << element << " ";
+  }
+  std::cout << std::endl;
+}
+
+class CFGEntry{
+public:
+  std::set<CFGEntry*> predecessors;
+  std::set<CFGEntry*> successors;
+  
+  BasicBlock* BB;
+  std::string name;
+  bool visited = false;
+
+  std::vector<std::string> dominator;
+  std::vector<std::string> dominated;
+  std::vector<std::string> dirDominator;
+  std::vector<std::string> dirDominated;
+
+  void Printer(){
+    std::cout << name <<  ":" << std::endl;
+    std::cout << "\tDominator: ";
+    std::sort(dominator.begin(), dominator.end());
+    if(dominator.size() == 0) std::cout << "X" << std::endl;
+    else printVector(dominator);
+
+    std::cout << "\tDominated: ";
+    std::sort(dominated.begin(), dominated.end());
+    if(dominated.size() == 0) std::cout << "X" << std::endl;
+    else printVector(dominated);
+
+    std::cout << "\tDirDominator: ";
+    std::sort(dirDominator.begin(), dirDominator.end());
+    if(dirDominator.size() == 0) std::cout << "X" << std::endl;
+    else printVector(dirDominator);
+  }
+};
+std::map<std::string, CFGEntry*> CFG;
+std::vector<std::string> end;
+bool changed;
+
+std::vector<std::string> Union(const std::vector<std::string>& vec1, const std::vector<std::string>& vec2) {
+    // Concatenate vectors
+    std::vector<std::string> result = vec1;
+    result.insert(result.end(), vec2.begin(), vec2.end());
+
+    // Sort the concatenated vector
+    std::sort(result.begin(), result.end());
+
+    // Remove duplicates
+    auto newEnd = std::unique(result.begin(), result.end());
+    result.erase(newEnd, result.end());
+
+    return result;
+}
+
+std::vector<std::string> Intersection(const std::vector<std::string>& vec1, const std::vector<std::string>& vec2) {
+    std::vector<std::string> result;
+
+    // Step 1: Sort both vectors
+    std::vector<std::string> sortedVec1 = vec1;
+    std::vector<std::string> sortedVec2 = vec2;
+
+    std::sort(sortedVec1.begin(), sortedVec1.end());
+    std::sort(sortedVec2.begin(), sortedVec2.end());
+
+    // Step 2: Compute the intersection
+    std::vector<std::string> intersection;
+    std::set_intersection(sortedVec1.begin(), sortedVec1.end(),
+                          sortedVec2.begin(), sortedVec2.end(),
+                          std::back_inserter(intersection));
+
+    return intersection;
+}
+
+void Remove(std::vector<std::string>& vec, const std::string& value) {
+    auto newEnd = std::remove(vec.begin(), vec.end(), value);
+    vec.erase(newEnd, vec.end());
+}
+
+void CleanVisitFlag(){
+  for (auto& element : CFG) {
+      element.second->visited = false;
+  }
+}
+
+void CreateCFG(BasicBlock* currBB){
+  std::string currBBName = currBB->getName().str();
+  assert(CFG.find(currBBName) != CFG.end());
+
+  CFGEntry* currEntry = CFG.find(currBBName)->second;
+  if(currEntry->visited) return;
+  currEntry->visited = true;
+  currEntry->name = currBBName;
+
+  if (llvm::Instruction* branchInst = llvm::dyn_cast<llvm::BranchInst>(&currBB->back())) {
+    
+    for (int i = 0, e = branchInst->getNumSuccessors(); i != e; i++) {
+      BasicBlock* itrBB = branchInst->getSuccessor(i);
+      std::string itrBBName = itrBB->getName().str();
+      CFGEntry* itrEntry = nullptr;
+      if(CFG.find(itrBBName) == CFG.end()){
+        CFG[itrBBName] = new CFGEntry();
+        CFG[itrBBName]->BB = itrBB;
+      }
+      itrEntry = CFG[itrBBName];
+      
+      if(itrEntry->predecessors.find(currEntry) == itrEntry->predecessors.end()){
+        itrEntry->predecessors.insert(currEntry);
+      }
+      if(currEntry->successors.find(itrEntry) == currEntry->successors.end()){
+        currEntry->successors.insert(itrEntry);
+      }
+
+      CreateCFG(itrBB);
+    }
+  }
+  else{
+    end.push_back(currBBName);
+  }
+}
+
+void DominatorPipeline(CFGEntry* currEntry){
+  std::vector<std::string> oldDom = currEntry->dominator;
+
+  bool set = false;
+  for (const auto& element : currEntry->predecessors) {
+    currEntry->dominator = Intersection(currEntry->dominator, element->dominator);
+  }
+  currEntry->dominator = Union(std::vector<std::string>{currEntry->name}, currEntry->dominator);
+
+  if(oldDom != currEntry->dominator) changed = true;
+}
+
+void DominatedPipeline(CFGEntry* currEntry){
+  for (const auto& pair : CFG) {
+    if (std::find(pair.second->dominator.begin(), pair.second->dominator.end(), currEntry->name) != pair.second->dominator.end()) {
+        currEntry->dominated.push_back(pair.second->name);
+    }
+  }
+}
+
+void DirDominatorPipeline(CFGEntry* currEntry){
+
+  auto& dirDom = currEntry->dirDominator;
+  for(int i = 0; i < dirDom.size(); i++){
+    for(int j = 0; j < dirDom.size(); j++){
+      if(i == j) continue;
+      const auto & dirDomI = CFG[dirDom[i]]->dirDominator;
+      if(std::find(dirDomI.begin(), dirDomI.end(), dirDom[j]) != dirDomI.end()){
+        Remove(dirDom, dirDom[j]);
+        changed = true;
+      }
+    }
+  }
+}
+
+void FrontPropagatePrinter(CFGEntry* currEntry){
+  if(currEntry->visited) return;
+  currEntry->visited = true;
+
+  currEntry->Printer();
+
+  std::vector<std::string> oldDom = currEntry->dominator;
+  for (const auto& element : currEntry->successors) {
+    FrontPropagatePrinter(element);
+  }
+}
+
 // This method implements what the pass does
 void processFunction(Function &F) {
-    // ECE467 STUDENT: add your code here
+
+  // ECE467 STUDENT: add your code here
+  /* CFG Creation */
+  for (llvm::BasicBlock& BB : F) {
+    if (BB.getName() == "entry") {
+      CFG["entry"] = new CFGEntry();
+      CFG["entry"]->BB = &BB;
+      break;
+    }
+  }
+  CreateCFG(CFG["entry"]->BB);
+  assert(end.size() == 1);
+
+  /* Dominator */
+  std::vector<std::string> nodeList;
+  for (const auto& pair : CFG) {
+    nodeList.push_back(pair.first);
+  }
+  for (const auto& pair : CFG) {
+    pair.second->dominator = nodeList;
+  }
+  CFG["entry"]->dominator.clear();
+  CFG["entry"]->dominator.push_back("entry");
+
+  changed = true;
+  while(changed){
+    changed = false;
+    for (const auto& pair : CFG) {
+      DominatorPipeline(pair.second);
+    }
+  }
+
+  /* Dominated */
+  for (const auto& pair : CFG) {
+    DominatedPipeline(pair.second);
+  }
+
+  /* Direct Dominator */
+  for (const auto& pair : CFG) {
+    if(pair.first == "entry")continue;
+    pair.second->dirDominator = pair.second->dominator;
+    Remove(pair.second->dirDominator, pair.second->name);
+  }
+  changed = true;
+  while(changed){
+    changed = false;
+    for (const auto& pair : CFG) {
+      if(pair.first == "entry")continue;
+      DirDominatorPipeline(pair.second);
+    }
+  }
+
+
+  
+  std::cout << "Printer"<< std::endl;
+  for (const auto& pair : CFG) {
+    pair.second->Printer();
+  }
 }
 
 struct A5Dom : PassInfoMixin<A5Dom> {
